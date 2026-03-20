@@ -146,6 +146,11 @@ const festiveTemplate: EidTemplate = {
             <div className="mt-[18px] text-[30px] font-extrabold tracking-[-0.2px] drop-shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
               {card.userName}
             </div>
+            {card.designation ? (
+              <div className="mt-[6px] text-[18px] font-semibold tracking-[0.6px] opacity-95">
+                {card.designation}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

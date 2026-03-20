@@ -184,6 +184,11 @@ const islamicTemplate: EidTemplate = {
             <div className="mt-[18px] text-[30px] font-extrabold tracking-[-0.3px] drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
               {card.userName}
             </div>
+            {card.designation ? (
+              <div className="mt-[6px] text-[18px] font-medium tracking-[0.7px] opacity-90">
+                {card.designation}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

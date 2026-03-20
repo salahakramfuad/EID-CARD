@@ -47,6 +47,7 @@ export type EidCardState = {
   title: string
   message: string
   userName: string
+  designation: string
 
   textColor: string
   /**

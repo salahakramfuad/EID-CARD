@@ -48,6 +48,9 @@ const royalTemplate: EidTemplate = {
         <div className="mt-auto pt-[32px]">
           <div className="h-[3px] w-[230px] rounded-full" style={{ backgroundColor: card.accentColor, opacity: 0.3 }} />
           <div className="mt-[18px] text-[30px] font-extrabold tracking-[-0.2px]">{card.userName}</div>
+          {card.designation ? (
+            <div className="mt-[6px] text-[18px] font-medium tracking-[0.7px] opacity-92">{card.designation}</div>
+          ) : null}
         </div>
       </div>
     </div>

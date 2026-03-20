@@ -117,6 +117,7 @@ export default function CardEditor() {
   const [logoCustomPosition, setLogoCustomPosition] = useState(false)
   const [showNameModal, setShowNameModal] = useState(false)
   const [nameInput, setNameInput] = useState('')
+  const [designationInput, setDesignationInput] = useState('')
   const [previewScale, setPreviewScale] = useState(0.8)
 
   const [card, setCard] = useState<EidCardState>(() => {
@@ -130,6 +131,7 @@ export default function CardEditor() {
       title: 'Eid Mubarak',
       message: initialPreset.message,
       userName: 'Your Name',
+      designation: '',
       textColor: DEFAULT_TEXT_COLOR,
       accentColor: DEFAULT_ACCENT_COLOR,
       autoTextColor: false,
@@ -199,7 +201,12 @@ export default function CardEditor() {
   const handleNameConfirm = () => {
     const trimmed = nameInput.trim()
     if (!trimmed) return
-    setCard((prev) => ({ ...prev, userName: trimmed }))
+    const normalizedDesignation = designationInput.trim()
+    setCard((prev) => ({
+      ...prev,
+      userName: trimmed,
+      designation: normalizedDesignation,
+    }))
     setShowNameModal(false)
   }
 
@@ -344,6 +351,21 @@ export default function CardEditor() {
                 className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
                 placeholder="Type your name"
               />
+            </label>
+
+            <label className="mt-3 block text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+              Position / Designation (optional)
+              <select
+                value={designationInput}
+                onChange={(e) => setDesignationInput(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
+              >
+                <option value="">No designation</option>
+                <option value="Student">Student</option>
+                <option value="Teacher">Teacher</option>
+                <option value="Staff">Staff</option>
+                <option value="Admin">Admin</option>
+              </select>
             </label>
 
             <button

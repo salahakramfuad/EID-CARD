@@ -114,6 +114,11 @@ const modernTemplate: EidTemplate = {
               <div className={`${nameSize} mt-[18px]`} style={{ fontWeight: 800 }}>
                 {card.userName}
               </div>
+              {card.designation ? (
+                <div className="mt-[6px] text-[18px] font-medium tracking-[0.6px] opacity-90">
+                  {card.designation}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
