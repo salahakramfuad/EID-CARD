@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+/* Avoid iOS overscroll glow affecting card export captures. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
