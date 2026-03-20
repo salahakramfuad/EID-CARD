@@ -106,6 +106,7 @@ async function requestAiPalette(
 export default function CardEditor() {
   const cardRef = useRef<HTMLDivElement>(null)
   const hasAskedNameRef = useRef(false)
+  const aiPaletteCacheRef = useRef<Map<string, { textColor: string; accentColor: string }>>(new Map())
 
   const initialFont = fontOptions[0]
   const initialPreset = presetEidMessages[0]
@@ -207,7 +208,12 @@ export default function CardEditor() {
     async function run() {
       if (!card.autoTextColor) return
       try {
-        const palette = await requestAiPalette(card.backgroundId, card.templateId)
+        const cacheKey = `${card.backgroundId}:${card.templateId}`
+        const cached = aiPaletteCacheRef.current.get(cacheKey)
+        const palette = cached ?? (await requestAiPalette(card.backgroundId, card.templateId))
+        if (!cached) {
+          aiPaletteCacheRef.current.set(cacheKey, palette)
+        }
         if (cancelled) return
         setCard((prev) => {
           if (!prev.autoTextColor) return prev
@@ -395,13 +401,14 @@ export default function CardEditor() {
               onLogoPlacementChange={handleLogoPlacementChange}
               onLogoWidthChange={handleLogoWidthChange}
               currentTemplateId={card.templateId}
+              showDownloadButton={false}
             />
           </div>
         </aside>
 
         {/* Preview */}
         <main className="order-1 overflow-auto p-4 lg:order-2">
-          <div className="flex justify-center">
+          <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-4">
             <Preview
               card={card}
               cardRef={cardRef}
@@ -409,6 +416,13 @@ export default function CardEditor() {
               onLogoPositionChange={handleLogoPositionChange}
               displayScale={previewScale}
             />
+            <button
+              type="button"
+              onClick={onDownloadPng}
+              className="hidden w-full max-w-[560px] rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-zinc-800 lg:block dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
+            >
+              Download PNG
+            </button>
           </div>
         </main>
 
@@ -428,6 +442,7 @@ export default function CardEditor() {
             onLogoPlacementChange={handleLogoPlacementChange}
             onLogoWidthChange={handleLogoWidthChange}
             currentTemplateId={card.templateId}
+              showDownloadButton={false}
           />
         </aside>
       </div>

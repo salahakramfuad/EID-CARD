@@ -137,9 +137,9 @@ export default function Preview({
         style={{
           background:
             'linear-gradient(180deg, rgba(4,8,16,0.58) 0%, rgba(5,10,20,0.34) 34%, rgba(5,10,20,0.26) 64%, rgba(4,8,16,0.56) 100%), radial-gradient(72% 48% at 50% 42%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.28) 100%)',
-          // Slight blur-like softening; improves readability on busy photos.
-          backdropFilter: 'blur(2.2px)',
-          WebkitBackdropFilter: 'blur(2.2px)',
+          // Keep a crisp gradient-only overlay for better performance.
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
         }}
       >
       </div>

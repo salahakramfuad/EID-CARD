@@ -27,6 +27,7 @@ type ControlsPanelProps = {
    * on the left and right sides around the preview.
    */
   region: 'left' | 'right'
+  showDownloadButton?: boolean
 }
 
 function renderFontSelectOptions() {
@@ -50,6 +51,7 @@ export default function ControlsPanel({
   onLogoPlacementChange,
   onLogoWidthChange,
   region,
+  showDownloadButton = true,
 }: ControlsPanelProps) {
   const selectedFont = fontOptions.find((f) => f.id === card.fontId) ?? fontOptions[0]
 
@@ -361,13 +363,15 @@ export default function ControlsPanel({
               </label>
             </div>
 
-            <button
-              type="button"
-              onClick={onDownloadPng}
-              className="mt-4 w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
-            >
-              Download PNG
-            </button>
+            {showDownloadButton ? (
+              <button
+                type="button"
+                onClick={onDownloadPng}
+                className="mt-4 w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
+              >
+                Download PNG
+              </button>
+            ) : null}
           </div>
         </>
       ) : null}
