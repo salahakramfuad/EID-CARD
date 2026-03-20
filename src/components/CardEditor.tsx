@@ -469,6 +469,18 @@ export default function CardEditor() {
         </aside>
       </div>
 
+      <div className="px-4 pb-4 text-center text-[11px] text-zinc-600 dark:text-zinc-400">
+        <span className="opacity-85">TM • Built by </span>
+        <a
+          href="https://github.com/salahakramfuad"
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold text-zinc-800 underline decoration-zinc-400 underline-offset-2 hover:text-zinc-950 dark:text-zinc-200 dark:hover:text-white"
+        >
+          Mohammad Salah
+        </a>
+      </div>
+
       <div className="fixed inset-x-4 bottom-3 z-80 lg:hidden">
         <button
           type="button"
