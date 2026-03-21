@@ -25,6 +25,21 @@ function isNarrowScreen() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+      } else {
+        reject(new Error('Could not read blob as data URL'))
+      }
+    }
+    reader.onerror = () => reject(new Error('Could not read blob as data URL'))
+    reader.readAsDataURL(blob)
+  })
+}
+
 /** iOS / iPadOS: `<a download>` with blob/data URLs usually does not save to Photos. */
 function isAppleTouchDevice() {
   if (typeof navigator === 'undefined') return false
@@ -201,6 +216,7 @@ export default function CardEditor() {
   const cardRef = useRef<HTMLDivElement>(null)
   const hasAskedNameRef = useRef(false)
   const aiPaletteCacheRef = useRef<Map<string, { textColor: string; accentColor: string }>>(new Map())
+  const backgroundDataUrlCacheRef = useRef<Map<BackgroundId, string>>(new Map())
   const downloadInFlightRef = useRef(false)
 
   const initialFont = fontOptions[0]
@@ -215,6 +231,7 @@ export default function CardEditor() {
   const [designationInput, setDesignationInput] = useState('')
   const [previewScale, setPreviewScale] = useState(0.8)
   const [exportLoading, setExportLoading] = useState(false)
+  const [resolvedBackgroundSrc, setResolvedBackgroundSrc] = useState(() => publicAssetUrl('bg1.png'))
   const resizeRafRef = useRef<number | null>(null)
 
   const [card, setCard] = useState<EidCardState>(() => {
@@ -253,10 +270,41 @@ export default function CardEditor() {
   useEffect(() => {
     ;(['bg1', 'bg2', 'bg3', 'bg4'] as BackgroundId[]).forEach((id) => {
       const im = new Image()
-      im.crossOrigin = 'anonymous'
       im.src = publicAssetUrl(`${id}.png`)
     })
   }, [])
+
+  // Convert selected background into data URL so iPhone export does not depend on URL/CORS at capture time.
+  useEffect(() => {
+    let cancelled = false
+    const id = card.backgroundId
+    const directUrl = publicAssetUrl(`${id}.png`)
+    const cached = backgroundDataUrlCacheRef.current.get(id)
+    if (cached) {
+      setResolvedBackgroundSrc(cached)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setResolvedBackgroundSrc(directUrl)
+    void (async () => {
+      try {
+        const res = await fetch(directUrl, { cache: 'force-cache' })
+        if (!res.ok) throw new Error(`Background fetch failed: ${res.status}`)
+        const blob = await res.blob()
+        const dataUrl = await blobToDataUrl(blob)
+        backgroundDataUrlCacheRef.current.set(id, dataUrl)
+        if (!cancelled) setResolvedBackgroundSrc(dataUrl)
+      } catch {
+        if (!cancelled) setResolvedBackgroundSrc(directUrl)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [card.backgroundId])
 
   // Load the selected Google Font for accurate preview/export.
   useEffect(() => {
@@ -569,6 +617,7 @@ export default function CardEditor() {
           <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-4">
             <Preview
               card={card}
+              backgroundSrc={resolvedBackgroundSrc}
               cardRef={cardRef}
               enableLogoDrag={enableLogoDrag}
               onLogoPositionChange={handleLogoPositionChange}

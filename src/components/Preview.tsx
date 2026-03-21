@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import type React from 'react'
-import { publicAssetUrl } from '../lib/publicAssetUrl'
 import { getTemplateById } from '../templates/registry'
 import { CARD_HEIGHT, CARD_WIDTH, type EidCardState } from '../templates/types'
 
 type PreviewProps = {
   card: EidCardState
+  backgroundSrc: string
   cardRef: React.RefObject<HTMLDivElement | null>
   enableLogoDrag?: boolean
   onLogoPositionChange: (nextX: number, nextY: number) => void
@@ -18,6 +18,7 @@ type PreviewProps = {
 
 export default function Preview({
   card,
+  backgroundSrc,
   cardRef,
   enableLogoDrag = true,
   onLogoPositionChange,
@@ -148,7 +149,7 @@ export default function Preview({
         */}
         <img
           data-card-background
-          src={publicAssetUrl(`${card.backgroundId}.png`)}
+          src={backgroundSrc}
           alt=""
           loading="eager"
           decoding="async"
