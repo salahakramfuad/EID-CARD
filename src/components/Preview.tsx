@@ -112,10 +112,13 @@ export default function Preview({
 
   return (
     <div
-      className="relative overflow-hidden rounded-[32px]"
+      className="relative overflow-hidden"
       style={{
         width: scaledWidth,
         height: scaledHeight,
+        // Keep corner radius proportional to the scaled preview
+        // so the preview edges match the exported 720×1080 canvas.
+        borderRadius: 32 * displayScale,
       }}
     >
       {/*
@@ -150,7 +153,7 @@ export default function Preview({
           loading="eager"
           decoding="async"
           draggable={false}
-          className="pointer-events-none absolute inset-0 z-0 h-full w-full rounded-[32px] object-cover select-none"
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover select-none"
         />
         <div
           className="absolute inset-0 z-1"
