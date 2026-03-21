@@ -1,4 +1,5 @@
 import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
 function MoonlightOverlay({ card }: { card: EidCardState }) {
@@ -41,12 +42,8 @@ const moonlightTemplate: EidTemplate = {
       <div style={{ fontFamily: card.fontFamily, color: card.textColor }} className="relative z-10 h-full px-[74px] pt-[184px] pb-[96px] flex flex-col">
         <div className="text-[56px] leading-[0.98] tracking-[-0.8px] font-semibold drop-shadow-[0_10px_28px_rgba(0,0,0,0.36)]">{card.title}</div>
         <div className="mt-[22px] text-[30px] leading-[1.32] font-medium whitespace-pre-wrap opacity-95">{card.message}</div>
-        <div className="mt-auto pt-[32px]">
-          <div className="h-[3px] w-[230px] rounded-full" style={{ backgroundColor: card.accentColor, opacity: 0.38 }} />
-          <div className="mt-[18px] text-[30px] font-extrabold tracking-[-0.2px]">{card.userName}</div>
-          {card.designation ? (
-            <div className="mt-[6px] text-[18px] font-medium tracking-[0.7px] opacity-92">{card.designation}</div>
-          ) : null}
+        <div className="mt-auto flex flex-col pt-[32px] pb-14">
+          <CardSignature card={card} divider="short" />
         </div>
       </div>
     </div>

@@ -20,6 +20,21 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
 }
 
+function isNarrowScreen() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+}
+
+/** One-step download only (no share sheet). */
+function triggerFileDownloadFromDataUrl(dataUrl: string) {
+  const a = document.createElement('a')
+  a.href = dataUrl
+  a.download = 'eid-card.png'
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
 function getDefaultLogoPosition(
   placement: LogoState['placement'],
   widthPx: number,
@@ -119,6 +134,8 @@ export default function CardEditor() {
   const [nameInput, setNameInput] = useState('')
   const [designationInput, setDesignationInput] = useState('')
   const [previewScale, setPreviewScale] = useState(0.8)
+  const [exportLoading, setExportLoading] = useState(false)
+  const resizeRafRef = useRef<number | null>(null)
 
   const [card, setCard] = useState<EidCardState>(() => {
     const font = initialFont
@@ -171,24 +188,32 @@ export default function CardEditor() {
   }, [darkMode])
 
   useEffect(() => {
-    function updatePreviewScale() {
+    function computeScale() {
       const vw = window.innerWidth
       if (vw < 640) {
-        // Fit preview nicely on phones while keeping it readable.
         const fit = (vw - 26) / CARD_WIDTH
-        setPreviewScale(clamp(fit, 0.42, 0.60))
-        return
+        return clamp(fit, 0.42, 0.6)
       }
-      if (vw < 1024) {
-        setPreviewScale(0.72)
-        return
-      }
-      setPreviewScale(0.8)
+      if (vw < 1024) return 0.72
+      return 0.8
     }
 
-    updatePreviewScale()
-    window.addEventListener('resize', updatePreviewScale)
-    return () => window.removeEventListener('resize', updatePreviewScale)
+    function scheduleUpdate() {
+      if (resizeRafRef.current !== null) return
+      resizeRafRef.current = window.requestAnimationFrame(() => {
+        resizeRafRef.current = null
+        setPreviewScale(computeScale())
+      })
+    }
+
+    setPreviewScale(computeScale())
+    window.addEventListener('resize', scheduleUpdate, { passive: true })
+    return () => {
+      window.removeEventListener('resize', scheduleUpdate)
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -299,28 +324,42 @@ export default function CardEditor() {
     })
   }
 
-  const onDownloadPng = async () => {
+  const captureCardPng = async (): Promise<string> => {
     const node = cardRef.current
-    if (!node) return
+    if (!node) throw new Error('Preview not ready')
 
-    // Wait for font loading + background analysis to reduce “wrong font/color” surprises.
     try {
       await (document as any).fonts?.ready
     } catch {
       // ignore
     }
 
-    const dataUrl = await toPng(node, {
+    const narrow = isNarrowScreen()
+    return toPng(node, {
       cacheBust: true,
-      pixelRatio: 2,
-      width: 720,
-      height: 1080,
+      pixelRatio: narrow ? 1.5 : 2,
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      // Preview uses CSS scale on the 720×1080 root; strip it on the clone so PNG matches design.
+      style: {
+        transform: 'none',
+        transformOrigin: 'top left',
+      },
     })
+  }
 
-    const link = document.createElement('a')
-    link.download = 'eid-card.png'
-    link.href = dataUrl
-    link.click()
+  const onDownloadPng = async () => {
+    if (exportLoading) return
+    setExportLoading(true)
+    try {
+      const dataUrl = await captureCardPng()
+      triggerFileDownloadFromDataUrl(dataUrl)
+    } catch (e) {
+      console.error(e)
+      window.alert('Could not download the image. Please try again.')
+    } finally {
+      setExportLoading(false)
+    }
   }
 
   const templateList = useMemo(() => templates, [])
@@ -328,7 +367,7 @@ export default function CardEditor() {
   return (
     <div className="min-h-dvh bg-zinc-50 pb-24 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 lg:pb-0">
       {showNameModal ? (
-        <div className="fixed inset-0 z-120 flex items-center justify-center bg-black/50 px-4 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-120 flex items-center justify-center bg-black/50 px-4 backdrop-blur-none sm:backdrop-blur-[2px]">
           <div className="w-full max-w-md rounded-3xl border border-zinc-200/80 bg-white p-6 shadow-2xl dark:border-zinc-700/80 dark:bg-zinc-900">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Welcome to Eid Card Generator</h2>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
@@ -441,9 +480,10 @@ export default function CardEditor() {
             <button
               type="button"
               onClick={onDownloadPng}
-              className="hidden w-full max-w-[560px] rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-zinc-800 lg:block dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
+              disabled={exportLoading}
+              className="hidden w-full max-w-[560px] rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 lg:block dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
-              Download PNG
+              {exportLoading ? 'Downloading…' : 'Download PNG'}
             </button>
           </div>
         </main>
@@ -481,13 +521,14 @@ export default function CardEditor() {
         </a>
       </div>
 
-      <div className="fixed inset-x-4 bottom-3 z-80 lg:hidden">
+      <div className="fixed inset-x-4 bottom-3 z-100 lg:hidden">
         <button
           type="button"
           onClick={onDownloadPng}
-          className="w-full rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
+          disabled={exportLoading}
+          className="w-full rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99] dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
         >
-          Download PNG
+          {exportLoading ? 'Downloading…' : 'Download PNG'}
         </button>
       </div>
     </div>

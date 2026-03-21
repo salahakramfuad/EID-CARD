@@ -1,4 +1,5 @@
 import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
 function RoyalOverlay({ card }: { card: EidCardState }) {
@@ -45,12 +46,8 @@ const royalTemplate: EidTemplate = {
       <div style={{ fontFamily: card.fontFamily, color: card.textColor }} className="relative z-10 h-full px-[74px] pt-[174px] pb-[96px] flex flex-col">
         <div className="text-[54px] leading-[0.98] tracking-[-0.9px] font-bold drop-shadow-[0_12px_24px_rgba(0,0,0,0.2)]">{card.title}</div>
         <div className="mt-[20px] text-[30px] leading-[1.3] font-medium whitespace-pre-wrap">{card.message}</div>
-        <div className="mt-auto pt-[32px]">
-          <div className="h-[3px] w-[230px] rounded-full" style={{ backgroundColor: card.accentColor, opacity: 0.3 }} />
-          <div className="mt-[18px] text-[30px] font-extrabold tracking-[-0.2px]">{card.userName}</div>
-          {card.designation ? (
-            <div className="mt-[6px] text-[18px] font-medium tracking-[0.7px] opacity-92">{card.designation}</div>
-          ) : null}
+        <div className="mt-auto flex flex-col pt-[32px] pb-14">
+          <CardSignature card={card} divider="short" />
         </div>
       </div>
     </div>

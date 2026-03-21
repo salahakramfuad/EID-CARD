@@ -10,7 +10,7 @@ type PreviewProps = {
   onLogoPositionChange: (nextX: number, nextY: number) => void
   /**
    * Scales down the on-screen preview only.
-   * PNG export still uses a fixed 720x1080 size via `toPng()` options.
+   * PNG export captures `cardRef` at native 720×1080 (no parent scale mismatch).
    */
   displayScale?: number
 }
@@ -22,8 +22,6 @@ export default function Preview({
   onLogoPositionChange,
   displayScale = 0.62,
 }: PreviewProps) {
-  // Portrait design space is 1:1 with export dimensions.
-  // `displayScale` only shrinks the on-screen preview.
   const scaledWidth = CARD_WIDTH * displayScale
   const scaledHeight = CARD_HEIGHT * displayScale
 
@@ -47,11 +45,11 @@ export default function Preview({
     }
   }
 
-  // Convert scaled preview coords -> design-space coords (inverse of displayScale).
-  function toDesignSpace(posPortrait: { x: number; y: number }) {
+  /** Pointer coords are in the scaled visual box → design space 720×1080 */
+  function toDesignSpace(pos: { x: number; y: number }) {
     return {
-      x: posPortrait.x / displayScale,
-      y: posPortrait.y / displayScale,
+      x: pos.x / displayScale,
+      y: pos.y / displayScale,
     }
   }
 
@@ -113,80 +111,88 @@ export default function Preview({
 
   return (
     <div
-      ref={cardRef}
-      className={[
-        'relative overflow-hidden rounded-[32px]',
-        dragging && enableLogoDrag && card.logo ? 'cursor-grabbing' : 'cursor-default',
-      ].join(' ')}
+      className="relative overflow-hidden rounded-[32px]"
       style={{
         width: scaledWidth,
         height: scaledHeight,
-        backgroundImage: `url('/${card.backgroundId}.png')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        ...(enableLogoDrag && card.logo ? { touchAction: 'none', userSelect: 'none' } : {}),
       }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
     >
+      {/*
+        Native design canvas: exactly CARD_WIDTH × CARD_HEIGHT.
+        Export uses this node so html-to-image matches on-screen layout (no nested scale bug).
+      */}
       <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(4,8,16,0.58) 0%, rgba(5,10,20,0.34) 34%, rgba(5,10,20,0.26) 64%, rgba(4,8,16,0.56) 100%), radial-gradient(72% 48% at 50% 42%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.28) 100%)',
-          // Keep a crisp gradient-only overlay for better performance.
-          backdropFilter: 'none',
-          WebkitBackdropFilter: 'none',
-        }}
-      >
-      </div>
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background: `radial-gradient(70% 38% at 50% 38%, ${card.accentColor}24 0%, transparent 78%)`,
-          mixBlendMode: 'soft-light',
-          opacity: 0.55,
-        }}
-      />
-
-      <div
-        className="absolute origin-top-left"
+        ref={cardRef}
+        className={[
+          'relative touch-manipulation overflow-hidden rounded-[32px]',
+          dragging && enableLogoDrag && card.logo ? 'cursor-grabbing' : 'cursor-default',
+        ].join(' ')}
         style={{
           width: CARD_WIDTH,
           height: CARD_HEIGHT,
           transform: `scale(${displayScale})`,
-          // Give all text a subtle lift from the background while keeping theme blending.
-          textShadow: '0 2px 14px rgba(0, 0, 0, 0.45)',
+          transformOrigin: 'top left',
+          backgroundImage: `url('/${card.backgroundId}.png')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
         }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
-        {template.render(cardWithoutLogo)}
-        {card.logo ? (
-          <img
-            crossOrigin="anonymous"
-            src={card.logo.dataUrl}
-            alt="Logo"
-            className="absolute z-50"
-            style={{
-              left: card.logo.x,
-              top: card.logo.y,
-              width: card.logo.widthPx,
-              height: Math.round(card.logo.widthPx * card.logo.aspectRatio),
-              objectFit: 'contain',
-              display: 'block',
-              borderRadius: 0,
-              boxShadow: 'none',
-              background: 'transparent',
-              border: 'none',
-              pointerEvents: 'auto',
-            }}
-          />
-        ) : null}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(4,8,16,0.58) 0%, rgba(5,10,20,0.34) 34%, rgba(5,10,20,0.26) 64%, rgba(4,8,16,0.56) 100%), radial-gradient(72% 48% at 50% 42%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.28) 100%)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-40 lg:opacity-[0.55]"
+          style={{
+            background: `radial-gradient(70% 38% at 50% 38%, ${card.accentColor}24 0%, transparent 78%)`,
+            mixBlendMode: 'soft-light',
+          }}
+        />
+
+        <div
+          className="relative h-full w-full"
+          style={{
+            textShadow: '0 2px 14px rgba(0, 0, 0, 0.45)',
+          }}
+        >
+          {template.render(cardWithoutLogo)}
+          {card.logo ? (
+            <img
+              crossOrigin="anonymous"
+              src={card.logo.dataUrl}
+              alt="Logo"
+              className="absolute z-50"
+              style={{
+                left: card.logo.x,
+                top: card.logo.y,
+                width: card.logo.widthPx,
+                height: Math.round(card.logo.widthPx * card.logo.aspectRatio),
+                objectFit: 'contain',
+                display: 'block',
+                borderRadius: 0,
+                boxShadow: 'none',
+                background: 'transparent',
+                border: 'none',
+                pointerEvents: 'auto',
+                touchAction: enableLogoDrag ? 'none' : 'auto',
+                userSelect: enableLogoDrag ? 'none' : 'auto',
+              }}
+            />
+          ) : null}
+
+        </div>
       </div>
     </div>
   )
 }
-

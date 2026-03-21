@@ -113,7 +113,7 @@ export default function ControlsPanel({
           </label>
 
           <label className="mt-3 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-            Name / Signature
+            Name (on card)
             <input
               type="text"
               value={card.userName}
@@ -122,6 +122,23 @@ export default function ControlsPanel({
               }}
               className="mt-1 w-full rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-50"
             />
+          </label>
+
+          <label className="mt-3 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            Designation (below name, optional)
+            <select
+              value={card.designation}
+              onChange={(e) => {
+                setCard((prev) => ({ ...prev, designation: e.target.value }))
+              }}
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-50"
+            >
+              <option value="">None — hide on card</option>
+              <option value="Student">Student</option>
+              <option value="Teacher">Teacher</option>
+              <option value="Staff">Staff</option>
+              <option value="Admin">Admin</option>
+            </select>
           </label>
         </div>
       ) : null}

@@ -1,9 +1,9 @@
 import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
 const titleSize = 'text-[56px] leading-[0.98] tracking-[-1px]'
 const messageSize = 'text-[30px] leading-[1.28]'
-const nameSize = 'text-[30px] leading-[1]'
 
 function DecorationOverlay({
   card,
@@ -106,19 +106,8 @@ const modernTemplate: EidTemplate = {
               {card.message}
             </div>
 
-            <div className="mt-auto pt-[32px]">
-              <div
-                className="mt-[10px] h-[3px] w-[220px] rounded-full"
-                style={{ backgroundColor: card.accentColor, opacity: 0.30 }}
-              />
-              <div className={`${nameSize} mt-[18px]`} style={{ fontWeight: 800 }}>
-                {card.userName}
-              </div>
-              {card.designation ? (
-                <div className="mt-[6px] text-[18px] font-medium tracking-[0.6px] opacity-90">
-                  {card.designation}
-                </div>
-              ) : null}
+            <div className="mt-auto flex flex-col pt-[32px] pb-14">
+              <CardSignature card={card} divider="short" />
             </div>
           </div>
         </div>

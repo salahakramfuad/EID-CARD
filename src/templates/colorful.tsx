@@ -1,4 +1,5 @@
 import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
 function DotField() {
@@ -145,19 +146,8 @@ const colorfulTemplate: EidTemplate = {
             <div className="mt-[20px] text-[30px] leading-[1.3] font-semibold whitespace-pre-wrap drop-shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
               {card.message}
             </div>
-            <div className="mt-auto pt-[32px]">
-              <div
-                className="mt-[12px] h-[3px] w-[220px] rounded-full"
-                style={{ backgroundColor: card.accentColor, opacity: 0.35 }}
-              />
-              <div className="mt-[18px] text-[30px] font-extrabold tracking-[-0.2px] drop-shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
-                {card.userName}
-              </div>
-              {card.designation ? (
-                <div className="mt-[6px] text-[18px] font-semibold tracking-[0.6px] opacity-95">
-                  {card.designation}
-                </div>
-              ) : null}
+            <div className="mt-auto flex flex-col pt-[32px] pb-14">
+              <CardSignature card={card} divider="short" />
             </div>
           </div>
         </div>
