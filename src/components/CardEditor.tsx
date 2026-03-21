@@ -231,6 +231,7 @@ export default function CardEditor() {
   const [designationInput, setDesignationInput] = useState('')
   const [previewScale, setPreviewScale] = useState(0.8)
   const [exportLoading, setExportLoading] = useState(false)
+  const [backgroundReady, setBackgroundReady] = useState(false)
   const [resolvedBackgroundSrc, setResolvedBackgroundSrc] = useState(() => publicAssetUrl('bg1.png'))
   const resizeRafRef = useRef<number | null>(null)
 
@@ -277,6 +278,7 @@ export default function CardEditor() {
   // Convert selected background into data URL so iPhone export does not depend on URL/CORS at capture time.
   useEffect(() => {
     let cancelled = false
+    setBackgroundReady(false)
     const id = card.backgroundId
     const directUrl = publicAssetUrl(`${id}.png`)
     const cached = backgroundDataUrlCacheRef.current.get(id)
@@ -305,6 +307,28 @@ export default function CardEditor() {
       cancelled = true
     }
   }, [card.backgroundId])
+
+  // Hard gate: do not allow export until the chosen background source is actually decoded.
+  useEffect(() => {
+    let cancelled = false
+    setBackgroundReady(false)
+    const img = new Image()
+    img.src = resolvedBackgroundSrc
+    const done = () => {
+      if (cancelled) return
+      setBackgroundReady(img.naturalWidth > 0)
+    }
+    const fail = () => {
+      if (cancelled) return
+      setBackgroundReady(false)
+    }
+    img.onload = done
+    img.onerror = fail
+    if (img.complete) done()
+    return () => {
+      cancelled = true
+    }
+  }, [resolvedBackgroundSrc])
 
   // Load the selected Google Font for accurate preview/export.
   useEffect(() => {
@@ -464,6 +488,7 @@ export default function CardEditor() {
   const captureCardPngBlob = async (): Promise<Blob> => {
     const node = cardRef.current
     if (!node) throw new Error('Preview not ready')
+    if (!backgroundReady) throw new Error('Background still loading')
 
     try {
       await (document as any).fonts?.ready
@@ -499,6 +524,10 @@ export default function CardEditor() {
   const onDownloadPng = async () => {
     // Prevent double-tap on mobile from triggering multiple `navigator.share()` calls.
     if (downloadInFlightRef.current) return
+    if (!backgroundReady) {
+      window.alert('Background is still loading. Please wait 1-2 seconds and try again.')
+      return
+    }
     downloadInFlightRef.current = true
     setExportLoading(true)
     try {
@@ -632,10 +661,10 @@ export default function CardEditor() {
             <button
               type="button"
               onClick={onDownloadPng}
-              disabled={exportLoading}
+              disabled={exportLoading || !backgroundReady}
               className="hidden w-full max-w-[560px] rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 lg:block dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
-              {exportLoading ? 'Downloading…' : 'Download PNG'}
+              {exportLoading ? 'Downloading…' : backgroundReady ? 'Download PNG' : 'Preparing background…'}
             </button>
           </div>
         </main>
@@ -677,10 +706,10 @@ export default function CardEditor() {
         <button
           type="button"
           onClick={onDownloadPng}
-          disabled={exportLoading}
+          disabled={exportLoading || !backgroundReady}
           className="w-full rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99] dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
         >
-          {exportLoading ? 'Downloading…' : 'Download PNG'}
+          {exportLoading ? 'Downloading…' : backgroundReady ? 'Download PNG' : 'Preparing background…'}
         </button>
       </div>
     </div>
