@@ -9,8 +9,6 @@ type PreviewProps = {
   cardRef: React.RefObject<HTMLDivElement | null>
   enableLogoDrag?: boolean
   onLogoPositionChange: (nextX: number, nextY: number) => void
-  /** Optional background source for export reliability (use `data:` URLs). */
-  backgroundSrc?: string | null
   /**
    * Scales down the on-screen preview only.
    * PNG export captures `cardRef` at native 720×1080 (no parent scale mismatch).
@@ -23,7 +21,6 @@ export default function Preview({
   cardRef,
   enableLogoDrag = true,
   onLogoPositionChange,
-  backgroundSrc = null,
   displayScale = 0.62,
 }: PreviewProps) {
   const scaledWidth = CARD_WIDTH * displayScale
@@ -146,22 +143,15 @@ export default function Preview({
           Real <img> (not CSS background) so html-to-image / mobile WebKit reliably embeds
           the photo in the exported PNG.
         */}
-        {(() => {
-          const src = backgroundSrc ?? publicAssetUrl(`${card.backgroundId}.png`)
-          const isDataUrl = src.startsWith('data:')
-          return (
         <img
           data-card-background
-          src={src}
+          src={publicAssetUrl(`${card.backgroundId}.png`)}
           alt=""
-          crossOrigin={isDataUrl ? undefined : 'anonymous'}
           loading="eager"
           decoding="async"
           draggable={false}
           className="pointer-events-none absolute inset-0 z-0 h-full w-full rounded-[32px] object-cover select-none"
         />
-          )
-        })()}
         <div
           className="absolute inset-0 z-1"
           style={{
@@ -189,7 +179,6 @@ export default function Preview({
           {template.render(cardWithoutLogo)}
           {card.logo ? (
             <img
-              crossOrigin="anonymous"
               src={card.logo.dataUrl}
               alt="Logo"
               className="absolute z-50"

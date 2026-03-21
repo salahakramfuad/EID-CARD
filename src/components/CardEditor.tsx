@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toBlob } from 'html-to-image'
 import { publicAssetUrl } from '../lib/publicAssetUrl'
-import { imageToDataUrl } from '../lib/imageToDataUrl'
 import Preview from './Preview'
 import ControlsPanel from './ControlsPanel'
 import TemplateSelector from './TemplateSelector'
@@ -35,56 +34,32 @@ function isAppleTouchDevice() {
   return iOS || iPadOS
 }
 
-async function waitForCardBackgroundImage(
-  root: HTMLElement,
-  opts: { requireDataUrl?: boolean } = {},
-) {
+async function waitForCardBackgroundImage(root: HTMLElement) {
   const img = root.querySelector<HTMLImageElement>('[data-card-background]')
   if (!img) return
-  const requireDataUrl = Boolean(opts.requireDataUrl)
-
-  const isReady = () => {
-    if (requireDataUrl && !img.src.startsWith('data:')) return false
-    return img.complete && img.naturalWidth > 0
-  }
-
-  if (isReady()) return
-
-  if (img.complete && img.naturalWidth === 0 && !requireDataUrl) {
+  if (img.complete && img.naturalWidth === 0) {
     throw new Error('Background image failed to load')
   }
-
-  await new Promise<void>((resolve, reject) => {
-    const cleanup = () => {
-      img.removeEventListener('load', onLoad)
-      img.removeEventListener('error', onErr)
-    }
-
-    const onLoad = () => {
-      if (isReady()) {
-        cleanup()
+  if (!img.complete || img.naturalWidth === 0) {
+    await new Promise<void>((resolve, reject) => {
+      const done = () => {
+        img.removeEventListener('load', done)
+        img.removeEventListener('error', onErr)
+        if (img.naturalWidth === 0) {
+          reject(new Error('Background image failed to load'))
+          return
+        }
         resolve()
       }
-    }
-
-    const onErr = () => {
-      cleanup()
-      reject(new Error('Background image failed to load'))
-    }
-
-    img.addEventListener('load', onLoad)
-    img.addEventListener('error', onErr)
-
-    // In case the `src` changes asynchronously (React state update), poll readiness.
-    const interval = window.setInterval(() => {
-      if (isReady()) {
-        window.clearInterval(interval)
-        cleanup()
-        resolve()
+      const onErr = () => {
+        img.removeEventListener('load', done)
+        img.removeEventListener('error', onErr)
+        reject(new Error('Background image failed to load'))
       }
-    }, 80)
-  })
-
+      img.addEventListener('load', done)
+      img.addEventListener('error', onErr)
+    })
+  }
   try {
     await img.decode()
   } catch {
@@ -226,6 +201,7 @@ export default function CardEditor() {
   const cardRef = useRef<HTMLDivElement>(null)
   const hasAskedNameRef = useRef(false)
   const aiPaletteCacheRef = useRef<Map<string, { textColor: string; accentColor: string }>>(new Map())
+  const downloadInFlightRef = useRef(false)
 
   const initialFont = fontOptions[0]
   const initialPreset = presetEidMessages[0]
@@ -240,10 +216,6 @@ export default function CardEditor() {
   const [previewScale, setPreviewScale] = useState(0.8)
   const [exportLoading, setExportLoading] = useState(false)
   const resizeRafRef = useRef<number | null>(null)
-
-  const [backgroundSrcForPreview, setBackgroundSrcForPreview] = useState<string | null>(null)
-  const [backgroundSrcForPreviewId, setBackgroundSrcForPreviewId] = useState<BackgroundId | null>(null)
-  const [backgroundSrcLoading, setBackgroundSrcLoading] = useState(false)
 
   const [card, setCard] = useState<EidCardState>(() => {
     const font = initialFont
@@ -285,34 +257,6 @@ export default function CardEditor() {
       im.src = publicAssetUrl(`${id}.png`)
     })
   }, [])
-
-  // Convert selected background into a `data:` URL so html-to-image doesn't have to
-  // fetch/encode external images during export (mobile WebKit is picky).
-  useEffect(() => {
-    let cancelled = false
-    async function loadBackground() {
-      setBackgroundSrcLoading(true)
-      try {
-        const url = publicAssetUrl(`${card.backgroundId}.png`)
-        const dataUrl = await imageToDataUrl(url)
-        if (cancelled) return
-        setBackgroundSrcForPreview(dataUrl)
-        setBackgroundSrcForPreviewId(card.backgroundId)
-      } catch {
-        if (cancelled) return
-        // Fallback: keep external URL (may still work, but export reliability is lower).
-        setBackgroundSrcForPreview(null)
-        setBackgroundSrcForPreviewId(card.backgroundId)
-      } finally {
-        if (cancelled) return
-        setBackgroundSrcLoading(false)
-      }
-    }
-    void loadBackground()
-    return () => {
-      cancelled = true
-    }
-  }, [card.backgroundId])
 
   // Load the selected Google Font for accurate preview/export.
   useEffect(() => {
@@ -479,9 +423,7 @@ export default function CardEditor() {
       // ignore
     }
 
-    await waitForCardBackgroundImage(node, {
-      requireDataUrl: backgroundSrcForPreview !== null,
-    })
+    await waitForCardBackgroundImage(node)
 
     const narrow = isNarrowScreen()
     const blob = await toBlob(node, {
@@ -501,7 +443,9 @@ export default function CardEditor() {
   }
 
   const onDownloadPng = async () => {
-    if (exportLoading) return
+    // Prevent double-tap on mobile from triggering multiple `navigator.share()` calls.
+    if (downloadInFlightRef.current) return
+    downloadInFlightRef.current = true
     setExportLoading(true)
     try {
       const blob = await captureCardPngBlob()
@@ -511,6 +455,7 @@ export default function CardEditor() {
       window.alert('Could not download the image. Please try again.')
     } finally {
       setExportLoading(false)
+      downloadInFlightRef.current = false
     }
   }
 
@@ -553,7 +498,7 @@ export default function CardEditor() {
               >
                 <option value="">No designation</option>
                 <option value="Student">Student</option>
-                <option value="Teacher">Faculty Member</option>
+                <option value="Teacher">Teacher</option>
                 <option value="Staff">Staff</option>
                 <option value="Admin">Admin</option>
               </select>
@@ -627,17 +572,12 @@ export default function CardEditor() {
               cardRef={cardRef}
               enableLogoDrag={enableLogoDrag}
               onLogoPositionChange={handleLogoPositionChange}
-              backgroundSrc={backgroundSrcForPreview}
               displayScale={previewScale}
             />
             <button
               type="button"
               onClick={onDownloadPng}
-              disabled={
-                exportLoading ||
-                backgroundSrcLoading ||
-                backgroundSrcForPreviewId !== card.backgroundId
-              }
+              disabled={exportLoading}
               className="hidden w-full max-w-[560px] rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 lg:block dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
               {exportLoading ? 'Downloading…' : 'Download PNG'}
@@ -682,11 +622,7 @@ export default function CardEditor() {
         <button
           type="button"
           onClick={onDownloadPng}
-            disabled={
-              exportLoading ||
-              backgroundSrcLoading ||
-              backgroundSrcForPreviewId !== card.backgroundId
-            }
+          disabled={exportLoading}
           className="w-full rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-xl hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99] dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
         >
           {exportLoading ? 'Downloading…' : 'Download PNG'}
