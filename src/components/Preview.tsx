@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type React from 'react'
+import { publicAssetUrl } from '../lib/publicAssetUrl'
 import { getTemplateById } from '../templates/registry'
 import { CARD_HEIGHT, CARD_WIDTH, type EidCardState } from '../templates/types'
 
@@ -132,18 +133,28 @@ export default function Preview({
           height: CARD_HEIGHT,
           transform: `scale(${displayScale})`,
           transformOrigin: 'top left',
-          backgroundImage: `url('/${card.backgroundId}.png')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
         }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
+        {/*
+          Real <img> (not CSS background) so html-to-image / mobile WebKit reliably embeds
+          the photo in the exported PNG.
+        */}
+        <img
+          data-card-background
+          src={publicAssetUrl(`${card.backgroundId}.png`)}
+          alt=""
+          crossOrigin="anonymous"
+          loading="eager"
+          decoding="async"
+          draggable={false}
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full rounded-[32px] object-cover select-none"
+        />
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 z-1"
           style={{
             background:
               'linear-gradient(180deg, rgba(4,8,16,0.58) 0%, rgba(5,10,20,0.34) 34%, rgba(5,10,20,0.26) 64%, rgba(4,8,16,0.56) 100%), radial-gradient(72% 48% at 50% 42%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.28) 100%)',
@@ -153,7 +164,7 @@ export default function Preview({
         />
         <div
           aria-hidden="true"
-          className="absolute inset-0 opacity-40 lg:opacity-[0.55]"
+          className="absolute inset-0 z-1 opacity-40 lg:opacity-[0.55]"
           style={{
             background: `radial-gradient(70% 38% at 50% 38%, ${card.accentColor}24 0%, transparent 78%)`,
             mixBlendMode: 'soft-light',
@@ -161,7 +172,7 @@ export default function Preview({
         />
 
         <div
-          className="relative h-full w-full"
+          className="relative z-2 h-full w-full"
           style={{
             textShadow: '0 2px 14px rgba(0, 0, 0, 0.45)',
           }}

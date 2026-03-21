@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { toPng } from 'html-to-image'
+import { toBlob } from 'html-to-image'
+import { publicAssetUrl } from '../lib/publicAssetUrl'
 import Preview from './Preview'
 import ControlsPanel from './ControlsPanel'
 import TemplateSelector from './TemplateSelector'
@@ -24,15 +25,93 @@ function isNarrowScreen() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
 }
 
-/** One-step download only (no share sheet). */
-function triggerFileDownloadFromDataUrl(dataUrl: string) {
-  const a = document.createElement('a')
-  a.href = dataUrl
-  a.download = 'eid-card.png'
-  a.rel = 'noopener'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
+/** iOS / iPadOS: `<a download>` with blob/data URLs usually does not save to Photos. */
+function isAppleTouchDevice() {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const iOS = /iPad|iPhone|iPod/.test(ua)
+  const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+  return iOS || iPadOS
+}
+
+async function waitForCardBackgroundImage(root: HTMLElement) {
+  const img = root.querySelector<HTMLImageElement>('[data-card-background]')
+  if (!img) return
+  if (img.complete && img.naturalWidth === 0) {
+    throw new Error('Background image failed to load')
+  }
+  if (!img.complete || img.naturalWidth === 0) {
+    await new Promise<void>((resolve, reject) => {
+      const done = () => {
+        img.removeEventListener('load', done)
+        img.removeEventListener('error', onErr)
+        if (img.naturalWidth === 0) {
+          reject(new Error('Background image failed to load'))
+          return
+        }
+        resolve()
+      }
+      const onErr = () => {
+        img.removeEventListener('load', done)
+        img.removeEventListener('error', onErr)
+        reject(new Error('Background image failed to load'))
+      }
+      img.addEventListener('load', done)
+      img.addEventListener('error', onErr)
+    })
+  }
+  try {
+    await img.decode()
+  } catch {
+    // decode() unsupported or decode failed — still try capture
+  }
+}
+
+/**
+ * Desktop/Android: blob URL + download attribute.
+ * iPhone/iPad: system Share sheet with the PNG file (user can tap "Save Image" → Photos).
+ */
+async function deliverPngBlobToUser(blob: Blob) {
+  const objectUrl = URL.createObjectURL(blob)
+  try {
+    // iOS does not reliably honor `<a download>`. The system Share sheet gives the user
+    // the "Save Image" option to store it in Photos.
+    if (isAppleTouchDevice() && typeof navigator.share === 'function') {
+      const file = new File([blob], 'eid-card.png', { type: 'image/png' })
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'Eid Card',
+          text: 'Save your Eid card',
+        })
+        return
+      } catch (err) {
+        // If user dismissed share, stop. Otherwise try URL-based sharing as fallback.
+        if ((err as Error).name === 'AbortError') return
+      }
+
+      try {
+        await navigator.share({
+          url: objectUrl,
+          title: 'Eid Card',
+        })
+        return
+      } catch {
+        // Fall through to open/blob download attempts.
+      }
+    }
+
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = 'eid-card.png'
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  } catch {
+    window.open(objectUrl, '_blank', 'noopener,noreferrer')
+  }
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120_000)
 }
 
 function getDefaultLogoPosition(
@@ -55,7 +134,7 @@ function getDefaultLogoPosition(
 }
 
 function recommendTextColorFromBackgroundId(backgroundId: BackgroundId): Promise<string> {
-  const url = `/${backgroundId}.png`
+  const url = publicAssetUrl(`${backgroundId}.png`)
   return new Promise<string>((resolve) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -157,7 +236,7 @@ export default function CardEditor() {
       decorations: { stars: true, moons: false, sparkles: true },
       logo: {
         // Use the permanent default logo from `public/School_logo.png`.
-        dataUrl: '/School_logo.png',
+        dataUrl: publicAssetUrl('School_logo.png'),
         x: defaultPos.x,
         y: defaultPos.y,
         widthPx: DEFAULT_LOGO_WIDTH_PX,
@@ -168,6 +247,15 @@ export default function CardEditor() {
 
     return base
   })
+
+  // Warm cache so mobile export isn’t racing a slow first paint of large PNGs.
+  useEffect(() => {
+    ;(['bg1', 'bg2', 'bg3', 'bg4'] as BackgroundId[]).forEach((id) => {
+      const im = new Image()
+      im.crossOrigin = 'anonymous'
+      im.src = publicAssetUrl(`${id}.png`)
+    })
+  }, [])
 
   // Load the selected Google Font for accurate preview/export.
   useEffect(() => {
@@ -324,7 +412,7 @@ export default function CardEditor() {
     })
   }
 
-  const captureCardPng = async (): Promise<string> => {
+  const captureCardPngBlob = async (): Promise<Blob> => {
     const node = cardRef.current
     if (!node) throw new Error('Preview not ready')
 
@@ -334,10 +422,13 @@ export default function CardEditor() {
       // ignore
     }
 
+    await waitForCardBackgroundImage(node)
+
     const narrow = isNarrowScreen()
-    return toPng(node, {
+    const blob = await toBlob(node, {
       cacheBust: true,
-      pixelRatio: narrow ? 1.5 : 2,
+      // Slightly lighter on phones to reduce memory pressure during capture.
+      pixelRatio: narrow ? 1.25 : 2,
       width: CARD_WIDTH,
       height: CARD_HEIGHT,
       // Preview uses CSS scale on the 720×1080 root; strip it on the clone so PNG matches design.
@@ -346,14 +437,16 @@ export default function CardEditor() {
         transformOrigin: 'top left',
       },
     })
+    if (!blob) throw new Error('Export produced an empty image')
+    return blob
   }
 
   const onDownloadPng = async () => {
     if (exportLoading) return
     setExportLoading(true)
     try {
-      const dataUrl = await captureCardPng()
-      triggerFileDownloadFromDataUrl(dataUrl)
+      const blob = await captureCardPngBlob()
+      await deliverPngBlobToUser(blob)
     } catch (e) {
       console.error(e)
       window.alert('Could not download the image. Please try again.')

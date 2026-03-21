@@ -1,6 +1,7 @@
 import type React from 'react'
 import { fontOptions } from '../lib/fonts'
 import { presetEidMessages } from '../lib/eidMessages'
+import { publicAssetUrl } from '../lib/publicAssetUrl'
 import type { BackgroundId, EidCardState, LogoState, TemplateId } from '../templates/types'
 
 type ControlsPanelProps = {
@@ -170,7 +171,7 @@ export default function ControlsPanel({
                   <div
                     className="h-16 w-full rounded-lg"
                     style={{
-                      backgroundImage: `url('/${bgId}.png')`,
+                      backgroundImage: `url('${publicAssetUrl(`${bgId}.png`)}')`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       backgroundRepeat: 'no-repeat',
