@@ -484,6 +484,12 @@ export default function CardEditor() {
       style: {
         transform: 'none',
         transformOrigin: 'top left',
+        // iPhone fallback: paint background on root clone as well, in case absolutely
+        // positioned <img> is skipped by foreignObject rendering.
+        backgroundImage: `url("${resolvedBackgroundSrc}")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
       },
     })
     if (!blob) throw new Error('Export produced an empty image')
