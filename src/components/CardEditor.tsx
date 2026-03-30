@@ -49,6 +49,17 @@ function isAppleTouchDevice() {
   return iOS || iPadOS
 }
 
+/** Instagram, Facebook, Line, etc. often block real downloads — suggest system browser. */
+function isLikelyInAppBrowser() {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  return /Instagram|FBAN|FBAV|FB_IAB|Line\/|\bSnapchat\b|Twitter/i.test(ua)
+}
+
+type DeliverPngResult =
+  | { outcome: 'complete' }
+  | { outcome: 'showManualSave'; objectUrl: string; showInAppBrowserHint: boolean }
+
 async function waitForCardBackgroundImage(root: HTMLElement) {
   const img = root.querySelector<HTMLImageElement>('[data-card-background]')
   if (!img) return
@@ -82,40 +93,70 @@ async function waitForCardBackgroundImage(root: HTMLElement) {
   }
 }
 
-/**
- * Desktop/Android: blob URL + download attribute.
- * iPhone/iPad: system Share sheet with the PNG file (user can tap "Save Image" → Photos).
- */
-async function deliverPngBlobToUser(blob: Blob) {
-  const objectUrl = URL.createObjectURL(blob)
+function scheduleRevokeObjectUrl(url: string, ms = 120_000) {
+  window.setTimeout(() => URL.revokeObjectURL(url), ms)
+}
+
+function canSharePngFile(file: File): boolean {
+  if (typeof navigator.canShare !== 'function') return true
   try {
-    // iOS does not reliably honor `<a download>`. The system Share sheet gives the user
-    // the "Save Image" option to store it in Photos.
-    if (isAppleTouchDevice() && typeof navigator.share === 'function') {
+    return navigator.canShare({ files: [file] })
+  } catch {
+    return false
+  }
+}
+
+/**
+ * iPhone/iPad: Web Share with files when supported; never rely on `<a download>` for blobs.
+ * Desktop/Android: `<a download>` first; then share-with-files; then new tab; then in-app modal.
+ */
+async function deliverPngBlobToUser(blob: Blob): Promise<DeliverPngResult> {
+  const objectUrl = URL.createObjectURL(blob)
+  const inApp = isLikelyInAppBrowser()
+  const apple = isAppleTouchDevice()
+  const canUseShare =
+    typeof window !== 'undefined' && window.isSecureContext && typeof navigator.share === 'function'
+
+  if (apple) {
+    if (canUseShare) {
       const file = new File([blob], 'eid-card.png', { type: 'image/png' })
-      try {
-        await navigator.share({
-          files: [file],
-          title: 'Eid Card',
-          text: 'Save your Eid card',
-        })
-        return
-      } catch (err) {
-        // If user dismissed share, stop. Otherwise try URL-based sharing as fallback.
-        if ((err as Error).name === 'AbortError') return
+      if (canSharePngFile(file)) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Eid Card',
+            text: 'Save your Eid card',
+          })
+          scheduleRevokeObjectUrl(objectUrl)
+          return { outcome: 'complete' }
+        } catch (err) {
+          if ((err as Error).name === 'AbortError') {
+            scheduleRevokeObjectUrl(objectUrl)
+            return { outcome: 'complete' }
+          }
+        }
       }
 
       try {
         await navigator.share({
           url: objectUrl,
           title: 'Eid Card',
+          text: 'Save your Eid card',
         })
-        return
-      } catch {
-        // Fall through to open/blob download attempts.
+        scheduleRevokeObjectUrl(objectUrl)
+        return { outcome: 'complete' }
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') {
+          scheduleRevokeObjectUrl(objectUrl)
+          return { outcome: 'complete' }
+        }
       }
     }
 
+    return { outcome: 'showManualSave', objectUrl, showInAppBrowserHint: inApp }
+  }
+
+  try {
     const a = document.createElement('a')
     a.href = objectUrl
     a.download = 'eid-card.png'
@@ -123,10 +164,36 @@ async function deliverPngBlobToUser(blob: Blob) {
     document.body.appendChild(a)
     a.click()
     a.remove()
+    scheduleRevokeObjectUrl(objectUrl)
+    return { outcome: 'complete' }
   } catch {
-    window.open(objectUrl, '_blank', 'noopener,noreferrer')
+    if (canUseShare) {
+      const file = new File([blob], 'eid-card.png', { type: 'image/png' })
+      if (canSharePngFile(file)) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Eid Card',
+            text: 'Save your Eid card',
+          })
+          scheduleRevokeObjectUrl(objectUrl)
+          return { outcome: 'complete' }
+        } catch (err) {
+          if ((err as Error).name === 'AbortError') {
+            scheduleRevokeObjectUrl(objectUrl)
+            return { outcome: 'complete' }
+          }
+        }
+      }
+    }
+
+    const popup = window.open(objectUrl, '_blank', 'noopener,noreferrer')
+    if (popup == null) {
+      return { outcome: 'showManualSave', objectUrl, showInAppBrowserHint: inApp }
+    }
+    scheduleRevokeObjectUrl(objectUrl)
+    return { outcome: 'complete' }
   }
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120_000)
 }
 
 function getDefaultLogoPosition(
@@ -231,6 +298,10 @@ export default function CardEditor() {
   const [designationInput, setDesignationInput] = useState('')
   const [previewScale, setPreviewScale] = useState(0.8)
   const [exportLoading, setExportLoading] = useState(false)
+  const [saveImageModal, setSaveImageModal] = useState<{
+    objectUrl: string
+    showInAppHint: boolean
+  } | null>(null)
   const [backgroundReady, setBackgroundReady] = useState(false)
   const [resolvedBackgroundSrc, setResolvedBackgroundSrc] = useState(() => publicAssetUrl('bg1.png'))
   const resizeRafRef = useRef<number | null>(null)
@@ -532,7 +603,13 @@ export default function CardEditor() {
     setExportLoading(true)
     try {
       const blob = await captureCardPngBlob()
-      await deliverPngBlobToUser(blob)
+      const result = await deliverPngBlobToUser(blob)
+      if (result.outcome === 'showManualSave') {
+        setSaveImageModal({
+          objectUrl: result.objectUrl,
+          showInAppHint: result.showInAppBrowserHint,
+        })
+      }
     } catch (e) {
       console.error(e)
       window.alert('Could not download the image. Please try again.')
@@ -543,6 +620,13 @@ export default function CardEditor() {
   }
 
   const templateList = useMemo(() => templates, [])
+
+  const closeSaveImageModal = () => {
+    setSaveImageModal((prev) => {
+      if (prev) URL.revokeObjectURL(prev.objectUrl)
+      return null
+    })
+  }
 
   return (
     <div className="min-h-dvh bg-zinc-50 pb-24 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 lg:pb-0">
@@ -594,6 +678,51 @@ export default function CardEditor() {
               className="mt-5 w-full rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
               Continue
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {saveImageModal ? (
+        <div className="fixed inset-0 z-130 flex items-center justify-center bg-black/55 px-4 py-8 backdrop-blur-none sm:backdrop-blur-[2px]">
+          <div
+            className="max-h-[min(92dvh,920px)] w-full max-w-md overflow-y-auto rounded-3xl border border-zinc-200/80 bg-white p-5 shadow-2xl dark:border-zinc-700/80 dark:bg-zinc-900"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-card-title"
+          >
+            <h2
+              id="save-card-title"
+              className="text-lg font-bold text-zinc-900 dark:text-zinc-50"
+            >
+              Save your card
+            </h2>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+              Long-press the image below, then tap{' '}
+              <span className="font-semibold text-zinc-800 dark:text-zinc-100">Save to Photos</span>{' '}
+              (or your browser&apos;s save option).
+            </p>
+            {saveImageModal.showInAppHint ? (
+              <p className="mt-3 rounded-xl border border-amber-200/90 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                For best results, open this page in{' '}
+                <span className="font-semibold">Safari</span> or{' '}
+                <span className="font-semibold">Chrome</span>, then download again.
+              </p>
+            ) : null}
+            <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950">
+              <img
+                src={saveImageModal.objectUrl}
+                alt="Your Eid card — long-press to save"
+                className="mx-auto block max-h-[min(58dvh,520px)] w-full object-contain"
+                draggable={false}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={closeSaveImageModal}
+              className="mt-5 w-full rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-100"
+            >
+              Close
             </button>
           </div>
         </div>
