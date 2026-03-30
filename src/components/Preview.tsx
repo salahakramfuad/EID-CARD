@@ -154,6 +154,8 @@ export default function Preview({
           loading="eager"
           decoding="async"
           draggable={false}
+          // Helps canvas / html-to-image embed same-origin photos (required for some WebKit paths).
+          crossOrigin={backgroundSrc.startsWith('data:') ? undefined : 'anonymous'}
           className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover select-none"
         />
         <div
@@ -197,6 +199,7 @@ export default function Preview({
             <img
               src={card.logo.dataUrl}
               alt="Logo"
+              crossOrigin={card.logo.dataUrl.startsWith('data:') ? undefined : 'anonymous'}
               className="absolute z-50"
               style={{
                 left: card.logo.x,

@@ -93,6 +93,65 @@ async function waitForCardBackgroundImage(root: HTMLElement) {
   }
 }
 
+/**
+ * iOS WebKit (Safari, Chrome, Edge on iPhone) often omits plain-URL &lt;img&gt;s when html-to-image
+ * draws the SVG foreignObject to canvas. Inline the photo as a data URL on the live node immediately
+ * before capture so the bitmap layer is present.
+ */
+async function ensureBackgroundImgIsDataUrlForExport(
+  root: HTMLElement,
+  backgroundId: BackgroundId,
+  cache: Map<BackgroundId, string>,
+): Promise<void> {
+  const img = root.querySelector<HTMLImageElement>('[data-card-background]')
+  if (!img) throw new Error('Preview not ready')
+
+  let src = img.currentSrc || img.src || ''
+  if (src.startsWith('data:image') && img.naturalWidth > 0) return
+
+  let dataUrl = cache.get(backgroundId)
+  if (!dataUrl) {
+    const res = await fetch(publicAssetUrl(`${backgroundId}.png`))
+    if (!res.ok) throw new Error(`Background fetch failed: ${res.status}`)
+    dataUrl = await blobToDataUrl(await res.blob())
+    cache.set(backgroundId, dataUrl)
+  }
+
+  src = img.currentSrc || img.src || ''
+  if (src === dataUrl && img.naturalWidth > 0) return
+
+  img.crossOrigin = 'anonymous'
+  await new Promise<void>((resolve, reject) => {
+    const done = () => {
+      img.removeEventListener('load', done)
+      img.removeEventListener('error', onErr)
+      if (img.naturalWidth === 0) {
+        reject(new Error('Background image failed to load'))
+        return
+      }
+      resolve()
+    }
+    const onErr = () => {
+      img.removeEventListener('load', done)
+      img.removeEventListener('error', onErr)
+      reject(new Error('Background image failed to load'))
+    }
+    img.addEventListener('load', done)
+    img.addEventListener('error', onErr)
+    img.src = dataUrl
+    if (img.complete && img.naturalWidth > 0) {
+      img.removeEventListener('load', done)
+      img.removeEventListener('error', onErr)
+      resolve()
+    }
+  })
+  try {
+    await img.decode()
+  } catch {
+    /* ignore */
+  }
+}
+
 function scheduleRevokeObjectUrl(url: string, ms = 120_000) {
   window.setTimeout(() => URL.revokeObjectURL(url), ms)
 }
@@ -568,11 +627,16 @@ export default function CardEditor() {
       // ignore
     }
 
+    await ensureBackgroundImgIsDataUrlForExport(node, card.backgroundId, backgroundDataUrlCacheRef.current)
     await waitForCardBackgroundImage(node)
+
+    const exportBgSrc =
+      backgroundDataUrlCacheRef.current.get(card.backgroundId) ?? resolvedBackgroundSrc
 
     const narrow = isNarrowScreen()
     const blob = await toBlob(node, {
-      cacheBust: true,
+      // cacheBust appends ?timestamp during embed; avoid extra re-fetches / broken keys on mobile.
+      cacheBust: false,
       // Slightly lighter on phones to reduce memory pressure during capture.
       pixelRatio: narrow ? 1.25 : 2,
       width: CARD_WIDTH,
@@ -581,9 +645,8 @@ export default function CardEditor() {
       style: {
         transform: 'none',
         transformOrigin: 'top left',
-        // iPhone fallback: paint background on root clone as well, in case absolutely
-        // positioned <img> is skipped by foreignObject rendering.
-        backgroundImage: `url("${resolvedBackgroundSrc}")`,
+        // WebKit: duplicate photo on the root clone when foreignObject skips the <img>.
+        backgroundImage: `url("${exportBgSrc}")`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
