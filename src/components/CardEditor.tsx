@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { toBlob } from 'html-to-image'
+import { getFontEmbedCSS, toBlob } from 'html-to-image'
 import { publicAssetUrl } from '../lib/publicAssetUrl'
+import { waitForFontsReady, waitForImagesInElement } from '../lib/waitForExportAssets'
 import Preview from './Preview'
 import ControlsPanel from './ControlsPanel'
 import TemplateSelector from './TemplateSelector'
@@ -59,39 +60,6 @@ function isLikelyInAppBrowser() {
 type DeliverPngResult =
   | { outcome: 'complete' }
   | { outcome: 'showManualSave'; objectUrl: string; showInAppBrowserHint: boolean }
-
-async function waitForCardBackgroundImage(root: HTMLElement) {
-  const img = root.querySelector<HTMLImageElement>('[data-card-background]')
-  if (!img) return
-  if (img.complete && img.naturalWidth === 0) {
-    throw new Error('Background image failed to load')
-  }
-  if (!img.complete || img.naturalWidth === 0) {
-    await new Promise<void>((resolve, reject) => {
-      const done = () => {
-        img.removeEventListener('load', done)
-        img.removeEventListener('error', onErr)
-        if (img.naturalWidth === 0) {
-          reject(new Error('Background image failed to load'))
-          return
-        }
-        resolve()
-      }
-      const onErr = () => {
-        img.removeEventListener('load', done)
-        img.removeEventListener('error', onErr)
-        reject(new Error('Background image failed to load'))
-      }
-      img.addEventListener('load', done)
-      img.addEventListener('error', onErr)
-    })
-  }
-  try {
-    await img.decode()
-  } catch {
-    // decode() unsupported or decode failed — still try capture
-  }
-}
 
 /**
  * iOS WebKit (Safari, Chrome, Edge on iPhone) often omits plain-URL &lt;img&gt;s when html-to-image
@@ -621,17 +589,11 @@ export default function CardEditor() {
     if (!node) throw new Error('Preview not ready')
     if (!backgroundReady) throw new Error('Background still loading')
 
-    try {
-      await (document as any).fonts?.ready
-    } catch {
-      // ignore
-    }
-
+    await waitForFontsReady()
     await ensureBackgroundImgIsDataUrlForExport(node, card.backgroundId, backgroundDataUrlCacheRef.current)
-    await waitForCardBackgroundImage(node)
+    await waitForImagesInElement(node)
 
-    const exportBgSrc =
-      backgroundDataUrlCacheRef.current.get(card.backgroundId) ?? resolvedBackgroundSrc
+    const fontEmbedCSS = await getFontEmbedCSS(node, { cacheBust: false })
 
     const narrow = isNarrowScreen()
     const blob = await toBlob(node, {
@@ -641,15 +603,11 @@ export default function CardEditor() {
       pixelRatio: narrow ? 1.25 : 2,
       width: CARD_WIDTH,
       height: CARD_HEIGHT,
+      fontEmbedCSS,
       // Preview uses CSS scale on the 720×1080 root; strip it on the clone so PNG matches design.
       style: {
         transform: 'none',
         transformOrigin: 'top left',
-        // WebKit: duplicate photo on the root clone when foreignObject skips the <img>.
-        backgroundImage: `url("${exportBgSrc}")`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
       },
     })
     if (!blob) throw new Error('Export produced an empty image')

@@ -193,7 +193,7 @@ export default function Preview({
           }}
         />
 
-        <div className="relative z-2 h-full w-full">
+        <div className="relative z-10 h-full w-full">
           {template.render(cardWithoutLogo)}
           {card.logo ? (
             <img
