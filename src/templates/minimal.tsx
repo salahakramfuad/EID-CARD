@@ -1,4 +1,5 @@
-import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { cardMessageClass, cardTitleClass } from '../lib/cardTypography'
+import { CrescentIcon, HexOutlineIcon, KhatamStarIcon, SparkleIcon, StarIcon } from './icons'
 import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
@@ -33,6 +34,12 @@ function DecorationOverlay({ card }: { card: EidCardState }) {
           </div>
         </>
       ) : null}
+      <div className="absolute left-[58px] top-[200px] h-[20px] w-[20px] opacity-[0.26]">
+        <KhatamStarIcon className="h-full w-full" />
+      </div>
+      <div className="absolute right-[62px] bottom-[220px] h-[18px] w-[18px] opacity-[0.24]">
+        <HexOutlineIcon className="h-full w-full" />
+      </div>
     </div>
   )
 }
@@ -57,16 +64,16 @@ const minimalTemplate: EidTemplate = {
   render: (card: EidCardState) => {
     return (
       <div className="absolute inset-0">
-        <div className="absolute inset-0 border border-zinc-900/10" />
+        <div className="absolute inset-0 border border-white/[0.07]" />
         <div
           aria-hidden="true"
-          className="absolute inset-[22px] rounded-[28px] border"
-          style={{ borderColor: card.accentColor, opacity: 0.22 }}
+          className="absolute inset-[20px] rounded-[30px] border"
+          style={{ borderColor: card.accentColor, opacity: 0.16 }}
         />
         <svg
           aria-hidden="true"
           viewBox="0 0 720 1080"
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-[0.16]"
           style={{ color: card.accentColor }}
         >
           <path d="M92 140 C 180 82, 258 82, 344 140" fill="none" stroke="currentColor" strokeWidth="2.2" />
@@ -75,19 +82,14 @@ const minimalTemplate: EidTemplate = {
 
         <DecorationOverlay card={card} />
 
-        <div className="relative z-10 h-full px-[72px] pt-[176px] pb-[94px] flex flex-col">
-          <div style={{ fontFamily: card.fontFamily, color: card.textColor }}>
-            <div className="text-[54px] leading-[1] tracking-[-0.8px] font-semibold">
-              {card.title}
-            </div>
-
-            <div className="mt-[20px] text-[30px] leading-[1.3] font-medium whitespace-pre-wrap opacity-95">
-              {card.message}
-            </div>
-
-            <div className="mt-auto flex flex-col pt-[32px] pb-14">
-              <CardSignature card={card} divider="short" />
-            </div>
+        <div
+          style={{ fontFamily: card.fontFamily, color: card.textColor }}
+          className="relative z-10 flex h-full flex-col px-[68px] pt-[178px] pb-[96px]"
+        >
+          <div className={cardTitleClass(card.boldText, card.textColor)}>{card.title}</div>
+          <div className={cardMessageClass(card.boldText, card.textColor)}>{card.message}</div>
+          <div className="mt-auto flex flex-col pt-[28px] pb-14">
+            <CardSignature card={card} divider="short" />
           </div>
         </div>
       </div>

@@ -1,33 +1,34 @@
-import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { cardMessageClass, cardTitleClass } from '../lib/cardTypography'
+import { CrescentIcon, KhatamStarIcon, SparkleIcon, StarIcon } from './icons'
 import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
 function ConfettiField() {
   // Deterministic set of confetti dots (stable for PNG export).
   const pieces = [
-    [80, 100, 7, 'rgba(255,255,255,0.65)'],
-    [150, 160, 6, 'rgba(255,255,255,0.45)'],
-    [210, 115, 5, 'rgba(255,255,255,0.55)'],
-    [290, 182, 6, 'rgba(255,255,255,0.35)'],
-    [360, 132, 5, 'rgba(255,255,255,0.60)'],
-    [440, 165, 7, 'rgba(255,255,255,0.40)'],
-    [520, 122, 6, 'rgba(255,255,255,0.55)'],
-    [590, 170, 5, 'rgba(255,255,255,0.35)'],
-    [660, 142, 6, 'rgba(255,255,255,0.45)'],
-    [95, 340, 6, 'rgba(255,255,255,0.55)'],
-    [180, 430, 7, 'rgba(255,255,255,0.35)'],
-    [250, 370, 5, 'rgba(255,255,255,0.45)'],
-    [340, 420, 6, 'rgba(255,255,255,0.55)'],
-    [460, 370, 5, 'rgba(255,255,255,0.35)'],
-    [540, 430, 6, 'rgba(255,255,255,0.48)'],
-    [640, 390, 5, 'rgba(255,255,255,0.42)'],
-    [110, 740, 7, 'rgba(255,255,255,0.55)'],
-    [195, 860, 5, 'rgba(255,255,255,0.40)'],
-    [270, 795, 6, 'rgba(255,255,255,0.48)'],
-    [360, 885, 5, 'rgba(255,255,255,0.42)'],
-    [450, 800, 7, 'rgba(255,255,255,0.35)'],
-    [540, 880, 6, 'rgba(255,255,255,0.45)'],
-    [635, 815, 5, 'rgba(255,255,255,0.40)'],
+    [80, 100, 6, 'rgba(255,255,255,0.42)'],
+    [150, 160, 5, 'rgba(255,255,255,0.32)'],
+    [210, 115, 4, 'rgba(255,255,255,0.38)'],
+    [290, 182, 5, 'rgba(255,255,255,0.28)'],
+    [360, 132, 4, 'rgba(255,255,255,0.4)'],
+    [440, 165, 5, 'rgba(255,255,255,0.3)'],
+    [520, 122, 5, 'rgba(255,255,255,0.38)'],
+    [590, 170, 4, 'rgba(255,255,255,0.28)'],
+    [660, 142, 5, 'rgba(255,255,255,0.34)'],
+    [95, 340, 5, 'rgba(255,255,255,0.38)'],
+    [180, 430, 5, 'rgba(255,255,255,0.28)'],
+    [250, 370, 4, 'rgba(255,255,255,0.32)'],
+    [340, 420, 5, 'rgba(255,255,255,0.38)'],
+    [460, 370, 4, 'rgba(255,255,255,0.28)'],
+    [540, 430, 5, 'rgba(255,255,255,0.34)'],
+    [640, 390, 4, 'rgba(255,255,255,0.3)'],
+    [110, 740, 5, 'rgba(255,255,255,0.38)'],
+    [195, 860, 4, 'rgba(255,255,255,0.3)'],
+    [270, 795, 5, 'rgba(255,255,255,0.34)'],
+    [360, 885, 4, 'rgba(255,255,255,0.3)'],
+    [450, 800, 5, 'rgba(255,255,255,0.26)'],
+    [540, 880, 5, 'rgba(255,255,255,0.32)'],
+    [635, 815, 4, 'rgba(255,255,255,0.28)'],
   ] as const
 
   return (
@@ -118,7 +119,7 @@ const festiveTemplate: EidTemplate = {
         <svg
           aria-hidden="true"
           viewBox="0 0 720 1080"
-          className="absolute inset-0 opacity-22"
+          className="absolute inset-0 opacity-[0.17]"
           style={{ color: card.accentColor }}
         >
           <path d="M36 210 C 130 160, 220 160, 315 210 C 410 260, 500 260, 684 188" fill="none" stroke="currentColor" strokeWidth="2.5" />
@@ -126,20 +127,21 @@ const festiveTemplate: EidTemplate = {
         </svg>
         <ConfettiField />
         <DecorationOverlay card={card} />
+        <div
+          aria-hidden="true"
+          className="absolute left-1/2 top-[128px] h-[36px] w-[36px] -translate-x-1/2 opacity-[0.22]"
+          style={{ color: card.accentColor }}
+        >
+          <KhatamStarIcon className="h-full w-full" />
+        </div>
 
         <div
           style={{ fontFamily: card.fontFamily, color: card.textColor }}
-          className="relative z-10 h-full px-[72px] pt-[170px] pb-[92px] flex flex-col"
+          className="relative z-10 flex h-full flex-col px-[68px] pt-[176px] pb-[96px]"
         >
-          <div className="text-[56px] leading-[0.98] tracking-[-0.9px] font-extrabold drop-shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
-            {card.title}
-          </div>
-
-          <div className="mt-[20px] text-[30px] leading-[1.3] font-semibold whitespace-pre-wrap drop-shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
-            {card.message}
-          </div>
-
-          <div className="mt-auto flex flex-col pt-[32px] pb-14">
+          <div className={cardTitleClass(card.boldText, card.textColor)}>{card.title}</div>
+          <div className={cardMessageClass(card.boldText, card.textColor)}>{card.message}</div>
+          <div className="mt-auto flex flex-col pt-[28px] pb-14">
             <CardSignature card={card} divider="short" />
           </div>
         </div>

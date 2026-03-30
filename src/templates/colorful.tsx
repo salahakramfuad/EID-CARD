@@ -1,4 +1,5 @@
-import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { cardMessageClass, cardTitleClass } from '../lib/cardTypography'
+import { CrescentIcon, InterlacedSquareIcon, KhatamStarIcon, SparkleIcon, StarIcon } from './icons'
 import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
@@ -31,10 +32,10 @@ function DotField() {
   ] as const
 
   const colors = [
-    'rgba(255,255,255,0.55)',
-    'rgba(255,255,255,0.35)',
-    'rgba(255,255,255,0.65)',
-    'rgba(255,255,255,0.30)',
+    'rgba(255,255,255,0.38)',
+    'rgba(255,255,255,0.26)',
+    'rgba(255,255,255,0.44)',
+    'rgba(255,255,255,0.22)',
   ] as const
 
   return (
@@ -123,12 +124,12 @@ const colorfulTemplate: EidTemplate = {
         <div
           aria-hidden="true"
           className="absolute inset-x-[70px] top-[78px] h-[70px] rounded-full blur-2xl"
-          style={{ backgroundColor: card.accentColor, opacity: 0.20 }}
+          style={{ backgroundColor: card.accentColor, opacity: 0.14 }}
         />
         <svg
           aria-hidden="true"
           viewBox="0 0 720 1080"
-          className="absolute inset-0 opacity-22"
+          className="absolute inset-0 opacity-[0.16]"
           style={{ color: card.accentColor }}
         >
           <path d="M24 250 C 120 210, 205 210, 300 250 C 390 288, 480 288, 690 230" fill="none" stroke="currentColor" strokeWidth="2.4" />
@@ -136,19 +137,30 @@ const colorfulTemplate: EidTemplate = {
         <DotField />
 
         <DecorationOverlay card={card} />
+        <div
+          aria-hidden="true"
+          className="absolute right-[72px] top-[200px] h-[30px] w-[30px] opacity-[0.26]"
+          style={{ color: card.accentColor }}
+        >
+          <KhatamStarIcon className="h-full w-full" />
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute left-[88px] bottom-[260px] h-[26px] w-[26px] opacity-[0.22]"
+          style={{ color: card.accentColor }}
+        >
+          <InterlacedSquareIcon className="h-full w-full" />
+        </div>
 
         {/* Content */}
-        <div className="relative z-10 h-full px-[72px] pt-[170px] pb-[92px] flex flex-col">
-          <div style={{ fontFamily: card.fontFamily, color: card.textColor }}>
-            <div className="text-[56px] leading-[0.98] tracking-[-0.9px] font-extrabold drop-shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
-              {card.title}
-            </div>
-            <div className="mt-[20px] text-[30px] leading-[1.3] font-semibold whitespace-pre-wrap drop-shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
-              {card.message}
-            </div>
-            <div className="mt-auto flex flex-col pt-[32px] pb-14">
-              <CardSignature card={card} divider="short" />
-            </div>
+        <div
+          style={{ fontFamily: card.fontFamily, color: card.textColor }}
+          className="relative z-10 flex h-full flex-col px-[68px] pt-[176px] pb-[96px]"
+        >
+          <div className={cardTitleClass(card.boldText, card.textColor)}>{card.title}</div>
+          <div className={cardMessageClass(card.boldText, card.textColor)}>{card.message}</div>
+          <div className="mt-auto flex flex-col pt-[28px] pb-14">
+            <CardSignature card={card} divider="short" />
           </div>
         </div>
       </div>

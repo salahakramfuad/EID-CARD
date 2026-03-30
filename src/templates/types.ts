@@ -62,6 +62,8 @@ export type EidCardState = {
   autoTextColor: boolean
   fontId: string
   fontFamily: string
+  /** Heavier title, message, and name when enabled. */
+  boldText: boolean
 
   decorations: TextDecorations
   logo: LogoState | null

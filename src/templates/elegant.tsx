@@ -1,4 +1,6 @@
-import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
+import { cardMessageClass, cardTitleClass } from '../lib/cardTypography'
+import { CrescentIcon, HexOutlineIcon, KhatamStarIcon, SparkleIcon, StarIcon } from './icons'
+import { ElegantFiligreeCorners } from './islamicOrnaments'
 import { CardSignature } from './signature'
 import type { EidCardState, EidTemplate } from './types'
 
@@ -42,6 +44,15 @@ function DecorationOverlay({ card }: { card: EidCardState }) {
           </div>
         </>
       ) : null}
+      <div className="absolute left-1/2 top-[156px] h-[26px] w-[26px] -translate-x-1/2 opacity-[0.4]">
+        <KhatamStarIcon className="h-full w-full" />
+      </div>
+      <div className="absolute left-[124px] top-[420px] h-[22px] w-[22px] opacity-[0.32]">
+        <HexOutlineIcon className="h-full w-full" />
+      </div>
+      <div className="absolute right-[118px] bottom-[380px] h-[24px] w-[24px] opacity-[0.34]">
+        <KhatamStarIcon className="h-full w-full" />
+      </div>
     </div>
   )
 }
@@ -71,65 +82,90 @@ const elegantTemplate: EidTemplate = {
         <div
           aria-hidden="true"
           className="absolute inset-x-[130px] top-[86px] h-[54px] rounded-full blur-2xl"
-          style={{ backgroundColor: card.accentColor, opacity: 0.16 }}
+          style={{ backgroundColor: card.accentColor, opacity: 0.12 }}
         />
         <div
           aria-hidden="true"
-          className="absolute inset-[42px] rounded-[30px] border-[2px]"
-          style={{ borderColor: card.accentColor, opacity: 0.14 }}
+          className="absolute inset-[40px] rounded-[32px] border"
+          style={{ borderColor: card.accentColor, opacity: 0.11 }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-[52px] rounded-[26px] border"
+          style={{ borderColor: card.accentColor, opacity: 0.08 }}
+        />
+
+        <ElegantFiligreeCorners
+          accentColor={card.accentColor}
+          opacity={0.22}
+          className="pointer-events-none absolute inset-0"
         />
 
         <div
           aria-hidden="true"
-          className="absolute left-[56px] top-[56px] h-[10px] w-[10px] rounded-full"
-          style={{ backgroundColor: card.accentColor, opacity: 0.18 }}
+          className="absolute left-[52px] top-[52px] h-[8px] w-[8px] rounded-full"
+          style={{ backgroundColor: card.accentColor, opacity: 0.14 }}
         />
         <div
           aria-hidden="true"
-          className="absolute right-[56px] top-[56px] h-[10px] w-[10px] rounded-full"
-          style={{ backgroundColor: card.accentColor, opacity: 0.18 }}
+          className="absolute right-[52px] top-[52px] h-[8px] w-[8px] rounded-full"
+          style={{ backgroundColor: card.accentColor, opacity: 0.14 }}
         />
         <div
           aria-hidden="true"
-          className="absolute left-[56px] bottom-[56px] h-[10px] w-[10px] rounded-full"
-          style={{ backgroundColor: card.accentColor, opacity: 0.18 }}
+          className="absolute left-[52px] bottom-[52px] h-[8px] w-[8px] rounded-full"
+          style={{ backgroundColor: card.accentColor, opacity: 0.14 }}
         />
         <div
           aria-hidden="true"
-          className="absolute right-[56px] bottom-[56px] h-[10px] w-[10px] rounded-full"
-          style={{ backgroundColor: card.accentColor, opacity: 0.18 }}
+          className="absolute right-[52px] bottom-[52px] h-[8px] w-[8px] rounded-full"
+          style={{ backgroundColor: card.accentColor, opacity: 0.14 }}
         />
 
         {/* Ornate lines */}
         <svg
           aria-hidden="true"
           viewBox="0 0 720 1080"
-          className="absolute inset-0 opacity-25"
+          className="absolute inset-0 opacity-[0.19]"
           style={{ color: card.accentColor }}
         >
+          <defs>
+            <linearGradient id="elgArcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.15" />
+              <stop offset="40%" stopColor="currentColor" stopOpacity="0.65" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0.2" />
+            </linearGradient>
+          </defs>
           <path
             d="M90 188 C 164 106, 240 106, 314 188"
-            stroke="currentColor"
-            strokeWidth="3"
+            stroke="url(#elgArcGrad)"
+            strokeWidth="2.25"
             fill="none"
           />
           <path
             d="M406 244 C 482 162, 560 162, 636 244"
-            stroke="currentColor"
-            strokeWidth="3"
+            stroke="url(#elgArcGrad)"
+            strokeWidth="2.25"
             fill="none"
           />
           <path
             d="M130 856 C 200 786, 280 786, 350 856"
-            stroke="currentColor"
-            strokeWidth="3"
+            stroke="url(#elgArcGrad)"
+            strokeWidth="2.25"
             fill="none"
           />
           <path
             d="M390 790 C 454 730, 520 730, 584 790"
-            stroke="currentColor"
-            strokeWidth="3"
+            stroke="url(#elgArcGrad)"
+            strokeWidth="2.25"
             fill="none"
+          />
+          <path
+            d="M360 208 C 320 198 300 218 300 248 C 300 280 328 298 360 292 C 392 298 420 280 420 248 C 420 218 400 198 360 208 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.15"
+            opacity="0.35"
           />
         </svg>
 
@@ -138,17 +174,11 @@ const elegantTemplate: EidTemplate = {
         {/* Content */}
         <div
           style={{ fontFamily: card.fontFamily, color: card.textColor }}
-          className="relative z-10 h-full px-[72px] pt-[170px] pb-[92px] flex flex-col"
+          className="relative z-10 flex h-full flex-col px-[68px] pt-[176px] pb-[96px]"
         >
-          <div className="text-[54px] leading-[1] tracking-[-0.9px] font-semibold drop-shadow-[0_10px_24px_rgba(0,0,0,0.10)]">
-            {card.title}
-          </div>
-
-          <div className="mt-[18px] text-[30px] leading-[1.3] font-medium whitespace-pre-wrap opacity-95">
-            {card.message}
-          </div>
-
-          <div className="mt-auto flex flex-col pt-[32px] pb-14">
+          <div className={cardTitleClass(card.boldText, card.textColor)}>{card.title}</div>
+          <div className={cardMessageClass(card.boldText, card.textColor)}>{card.message}</div>
+          <div className="mt-auto flex flex-col pt-[28px] pb-14">
             <CardSignature card={card} divider="short" />
           </div>
         </div>

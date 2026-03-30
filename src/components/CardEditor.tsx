@@ -323,6 +323,7 @@ export default function CardEditor() {
       autoTextColor: false,
       fontId: font.id,
       fontFamily: font.familyCss,
+      boldText: false,
       decorations: { stars: true, moons: false, sparkles: true },
       logo: {
         // Use the permanent default logo from `public/School_logo.png`.

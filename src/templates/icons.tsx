@@ -43,3 +43,47 @@ export function SparkleIcon({ className }: { className?: string }) {
   )
 }
 
+/** Classic khatam: two overlapping squares → eight-point Islamic star (filled). */
+export function KhatamStarIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M12 2 22 12 12 22 2 12ZM12 6 18 12 12 18 6 12Z"
+      />
+    </svg>
+  )
+}
+
+/** Interlaced square outline — rub el hizb–adjacent geometric. */
+export function InterlacedSquareIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinejoin="round"
+        d="M12 2 22 12 12 22 2 12zM12 4 20 12 12 20 4 12z"
+      />
+    </svg>
+  )
+}
+
+/** Regular hexagon outline — common in girih panels. */
+export function HexOutlineIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+        d="M12 3l7.5 4.33v8.66L12 20l-7.5-4.33V7.33L12 3z"
+      />
+      <circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" strokeWidth="0.9" opacity="0.65" />
+    </svg>
+  )
+}
+

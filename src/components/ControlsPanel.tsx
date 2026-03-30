@@ -245,6 +245,21 @@ export default function ControlsPanel({
               </select>
             </label>
 
+            <label className="mt-3 flex cursor-pointer items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white/50 px-3 py-2.5 dark:border-zinc-700/80 dark:bg-zinc-900/25">
+              <input
+                type="checkbox"
+                checked={card.boldText}
+                onChange={(e) => {
+                  setCard((prev) => ({ ...prev, boldText: e.target.checked }))
+                }}
+                className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-900"
+              />
+              <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                Bold text
+              </span>
+              <span className="ml-auto text-[11px] text-zinc-500 dark:text-zinc-400">Title · message · name</span>
+            </label>
+
             <div className="mt-4">
               <div className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">Decorations</div>
               <div className="flex flex-wrap gap-3">

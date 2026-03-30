@@ -119,7 +119,7 @@ export default function Preview({
         height: scaledHeight,
         // Keep corner radius proportional to the scaled preview
         // so the preview edges match the exported 720×1080 canvas.
-        borderRadius: 32 * displayScale,
+        borderRadius: 36 * displayScale,
       }}
     >
       {/*
@@ -129,7 +129,7 @@ export default function Preview({
       <div
         ref={cardRef}
         className={[
-          'relative touch-manipulation overflow-hidden rounded-[32px]',
+          'relative touch-manipulation overflow-hidden rounded-[36px]',
           dragging && enableLogoDrag && card.logo ? 'cursor-grabbing' : 'cursor-default',
         ].join(' ')}
         style={{
@@ -159,27 +159,39 @@ export default function Preview({
         <div
           className="absolute inset-0 z-1"
           style={{
+            /* Even tint so type stays readable on bright and dark photo areas. */
             background:
-              'linear-gradient(180deg, rgba(4,8,16,0.58) 0%, rgba(5,10,20,0.34) 34%, rgba(5,10,20,0.26) 64%, rgba(4,8,16,0.56) 100%), radial-gradient(72% 48% at 50% 42%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.28) 100%)',
+              'linear-gradient(165deg, rgba(6,10,18,0.5) 0%, rgba(5,9,16,0.38) 32%, rgba(4,8,14,0.4) 52%, rgba(5,10,18,0.52) 100%)',
             backdropFilter: 'none',
             WebkitBackdropFilter: 'none',
           }}
         />
+        {/* Extra darkening behind the main text column (center). */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 z-1 opacity-40 lg:opacity-[0.55]"
+          className="pointer-events-none absolute inset-0 z-1"
           style={{
-            background: `radial-gradient(70% 38% at 50% 38%, ${card.accentColor}24 0%, transparent 78%)`,
-            mixBlendMode: 'soft-light',
+            background:
+              'radial-gradient(ellipse 96% 72% at 50% 42%, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.08) 52%, transparent 72%)',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 z-1 opacity-[0.32] lg:opacity-[0.4]"
+          style={{
+            background: `radial-gradient(78% 44% at 50% 36%, ${card.accentColor}26 0%, transparent 72%)`,
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-1 opacity-[0.45]"
+          style={{
+            background:
+              'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.12) 100%)',
           }}
         />
 
-        <div
-          className="relative z-2 h-full w-full"
-          style={{
-            textShadow: '0 2px 14px rgba(0, 0, 0, 0.45)',
-          }}
-        >
+        <div className="relative z-2 h-full w-full">
           {template.render(cardWithoutLogo)}
           {card.logo ? (
             <img
