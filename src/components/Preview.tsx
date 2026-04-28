@@ -2,6 +2,12 @@ import { useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import { getTemplateById } from '../templates/registry'
 import { CARD_HEIGHT, CARD_WIDTH, type EidCardState } from '../templates/types'
+import {
+  accentGlowGradient,
+  BASE_TINT_GRADIENT,
+  CENTER_DARKEN_GRADIENT,
+  GLOSS_GRADIENT,
+} from '../lib/cardBackgroundLayers'
 
 type PreviewProps = {
   card: EidCardState
@@ -159,37 +165,38 @@ export default function Preview({
           className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover select-none"
         />
         <div
+          data-export-layer="background-overlay"
           className="absolute inset-0 z-1"
           style={{
             /* Even tint so type stays readable on bright and dark photo areas. */
-            background:
-              'linear-gradient(165deg, rgba(6,10,18,0.5) 0%, rgba(5,9,16,0.38) 32%, rgba(4,8,14,0.4) 52%, rgba(5,10,18,0.52) 100%)',
+            background: BASE_TINT_GRADIENT,
             backdropFilter: 'none',
             WebkitBackdropFilter: 'none',
           }}
         />
         {/* Extra darkening behind the main text column (center). */}
         <div
+          data-export-layer="background-overlay"
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-1"
           style={{
-            background:
-              'radial-gradient(ellipse 96% 72% at 50% 42%, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.08) 52%, transparent 72%)',
+            background: CENTER_DARKEN_GRADIENT,
           }}
         />
         <div
+          data-export-layer="background-overlay"
           aria-hidden="true"
           className="absolute inset-0 z-1 opacity-[0.32] lg:opacity-[0.4]"
           style={{
-            background: `radial-gradient(78% 44% at 50% 36%, ${card.accentColor}26 0%, transparent 72%)`,
+            background: accentGlowGradient(card),
           }}
         />
         <div
+          data-export-layer="background-overlay"
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-1 opacity-[0.45]"
           style={{
-            background:
-              'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.12) 100%)',
+            background: GLOSS_GRADIENT,
           }}
         />
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getFontEmbedCSS, toBlob } from 'html-to-image'
 import { publicAssetUrl } from '../lib/publicAssetUrl'
 import { waitForFontsReady, waitForImagesInElement } from '../lib/waitForExportAssets'
+import { renderCardToCanvas } from '../lib/renderCardToCanvas'
 import Preview from './Preview'
 import ControlsPanel from './ControlsPanel'
 import TemplateSelector from './TemplateSelector'
@@ -633,24 +633,15 @@ export default function CardEditor() {
     await waitForImagesInElement(node)
     await waitForCommittedPaint(appleWebKit)
 
-    const fontEmbedCSS = await getFontEmbedCSS(node, { cacheBust: false })
-
     const narrow = isNarrowScreen()
     const blobFromCapture = async (pixelRatio: number): Promise<Blob> => {
-      const captured = await toBlob(node, {
-        // cacheBust appends ?timestamp during embed; avoid extra re-fetches / broken keys on mobile.
-        cacheBust: false,
-        // Slightly lighter on phones to reduce memory pressure during capture.
+      const canvas = await renderCardToCanvas({
+        node,
+        card,
+        backgroundSrc: resolvedBackgroundSrc,
         pixelRatio,
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-        fontEmbedCSS,
-        // Preview uses CSS scale on the 720×1080 root; strip it on the clone so PNG matches design.
-        style: {
-          transform: 'none',
-          transformOrigin: 'top left',
-        },
       })
+      const captured = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
       if (!captured) throw new Error('Export produced an empty image')
       return captured
     }

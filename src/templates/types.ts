@@ -82,5 +82,10 @@ export type EidTemplate = {
    * Used in preview/export.
    */
   render: (card: EidCardState) => ReactNode
+  /**
+   * Optional canvas renderer for fully deterministic export on devices where
+   * DOM snapshotting can be flaky (not required for all templates immediately).
+   */
+  renderToCanvas?: (ctx: CanvasRenderingContext2D, card: EidCardState) => void | Promise<void>
 }
 
