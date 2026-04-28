@@ -149,44 +149,6 @@ export default function ControlsPanel({
         <>
           <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Background</h3>
-              <div className="text-xs text-zinc-600 dark:text-zinc-400">bg1 - bg4</div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {(['bg1', 'bg2', 'bg3', 'bg4'] as BackgroundId[]).map((bgId) => (
-                <button
-                  key={bgId}
-                  type="button"
-                  onClick={() => {
-                    setCard((prev) => ({ ...prev, backgroundId: bgId }))
-                  }}
-                  className={[
-                    'relative overflow-hidden rounded-xl border px-2 py-2 text-left transition',
-                    card.backgroundId === bgId
-                      ? 'border-zinc-900/70 dark:border-zinc-100/80 bg-zinc-100/40 dark:bg-zinc-800/40'
-                      : 'border-zinc-300/60 hover:bg-zinc-100/30 dark:border-zinc-700/60 dark:hover:bg-zinc-800/30',
-                  ].join(' ')}
-                >
-                  <div
-                    className="h-16 w-full rounded-lg"
-                    style={{
-                      backgroundImage: `url('${publicAssetUrl(`${bgId}.png`)}')`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat',
-                    }}
-                  />
-                  <div className="mt-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    {bgId.toUpperCase()}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">
-            <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Style</h3>
             </div>
 
@@ -303,6 +265,44 @@ export default function ControlsPanel({
                   Sparkles
                 </label>
               </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Background</h3>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400">bg1 - bg4</div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {(['bg1', 'bg2', 'bg3', 'bg4'] as BackgroundId[]).map((bgId) => (
+                <button
+                  key={bgId}
+                  type="button"
+                  onClick={() => {
+                    setCard((prev) => ({ ...prev, backgroundId: bgId }))
+                  }}
+                  className={[
+                    'relative overflow-hidden rounded-xl border px-2 py-2 text-left transition',
+                    card.backgroundId === bgId
+                      ? 'border-zinc-900/70 dark:border-zinc-100/80 bg-zinc-100/40 dark:bg-zinc-800/40'
+                      : 'border-zinc-300/60 hover:bg-zinc-100/30 dark:border-zinc-700/60 dark:hover:bg-zinc-800/30',
+                  ].join(' ')}
+                >
+                  <div
+                    className="h-16 w-full rounded-lg"
+                    style={{
+                      backgroundImage: `url('${publicAssetUrl(`${bgId}.png`)}')`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                    }}
+                  />
+                  <div className="mt-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    {bgId.toUpperCase()}
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 

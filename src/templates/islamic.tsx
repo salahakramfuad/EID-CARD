@@ -77,9 +77,9 @@ function DecorationOverlay({ card }: { card: EidCardState }) {
 
 const islamicTemplate: EidTemplate = {
   id: 'islamic',
-  name: 'Islamic',
+  name: 'Eid-ul-Adha',
   styleKey: 'islamic',
-  description: 'Girih patterns, mihrab, and khatam stars',
+  description: 'Adha lanterns, crescent, mosque skyline, and sacred ornaments',
   thumbnail: (active: boolean) => (
     <div
       className={[
@@ -95,6 +95,47 @@ const islamicTemplate: EidTemplate = {
   render: (card: EidCardState) => {
     return (
       <div className="absolute inset-0">
+        {/* Eid-ul-Adha focal motifs */}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 720 1080"
+          className="pointer-events-none absolute inset-0 z-2 opacity-[0.42]"
+          style={{ color: card.accentColor }}
+        >
+          <path d="M62 228h2v130h-2zM656 238h2v120h-2z" fill="currentColor" opacity="0.45" />
+          <path
+            d="M48 356h30l-7 14v24l-8 8H53l-8-8v-24zM642 350h30l-7 14v24l-8 8h-10l-8-8v-24z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <path
+            d="M120 820 C 192 764, 278 764, 352 820 C 426 764, 510 764, 584 820"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            opacity="0.4"
+          />
+          <path
+            d="M64 906 L118 872 L164 906 Z M146 906 L210 862 L274 906 Z M254 906 L320 852 L388 906 Z M376 906 L450 858 L522 906 Z M498 906 L562 868 L626 906 Z"
+            fill="currentColor"
+            opacity="0.2"
+          />
+          <path
+            d="M560 102 C 590 78 632 94 637 132 C 642 168 608 193 574 184 C 599 176 617 153 612 127 C 607 101 584 91 560 102 Z"
+            fill="currentColor"
+            opacity="0.6"
+          />
+          <path
+            d="M102 892 C 110 878 128 874 142 881 C 158 889 165 908 160 924 C 156 940 140 952 122 952 C 107 951 92 942 86 927 C 98 932 112 934 124 929 C 134 924 140 914 138 903 C 136 893 128 887 119 886 C 113 885 107 887 102 892 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.3"
+            opacity="0.55"
+          />
+          <circle cx="127" cy="902" r="2.8" fill="currentColor" opacity="0.55" />
+        </svg>
+
         {/* Frame + subtle geometric pattern */}
         <div
           aria-hidden="true"

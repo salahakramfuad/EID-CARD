@@ -361,6 +361,7 @@ export default function CardEditor() {
   const [nameInput, setNameInput] = useState('')
   const [designationInput, setDesignationInput] = useState('')
   const [previewScale, setPreviewScale] = useState(0.8)
+  const [mobilePanel, setMobilePanel] = useState<'message' | 'background' | 'template'>('message')
   const [exportLoading, setExportLoading] = useState(false)
   const [saveImageModal, setSaveImageModal] = useState<{
     objectUrl: string
@@ -376,9 +377,9 @@ export default function CardEditor() {
     const defaultPos = getDefaultLogoPosition(defaultPlacement, DEFAULT_LOGO_WIDTH_PX, 1)
     const defaultBackgroundId: BackgroundId = 'bg1'
     const base: EidCardState = {
-      templateId: 'modern',
+      templateId: 'islamic',
       backgroundId: defaultBackgroundId,
-      title: 'Eid Mubarak',
+      title: 'Eid-ul-Adha Mubarak',
       message: initialPreset.message,
       userName: 'Your Name',
       designation: '',
@@ -388,7 +389,7 @@ export default function CardEditor() {
       fontId: font.id,
       fontFamily: font.familyCss,
       boldText: false,
-      decorations: { stars: true, moons: false, sparkles: true },
+      decorations: { stars: true, moons: true, sparkles: true },
       logo: {
         // Use the permanent default logo from `public/School_logo.png`.
         dataUrl: publicAssetUrl('School_logo.png'),
@@ -807,13 +808,18 @@ export default function CardEditor() {
 
       <div className="mx-auto grid w-full max-w-[1460px] grid-cols-1 lg:grid-cols-[380px_1fr_380px] lg:items-start">
         {/* Left controls */}
-        <aside className="order-2 w-full border-b border-zinc-200 p-4 lg:order-1 lg:border-b-0 lg:border-r lg:border-zinc-200 dark:border-zinc-800">
-          <div className="text-lg font-bold">Eid Card Generator</div>
+        <aside
+          className={[
+            'order-2 w-full border-b border-zinc-200 p-4 lg:order-1 lg:border-b-0 lg:border-r lg:border-zinc-200 dark:border-zinc-800',
+            mobilePanel === 'background' ? 'hidden lg:block' : 'block',
+          ].join(' ')}
+        >
+          <div className="text-lg font-bold">Eid-ul-Adha Card Generator</div>
           <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
             Customize, preview, and download as PNG.
           </div>
 
-          <div className="mt-4 rounded-2xl border border-zinc-200/70 bg-white/60 p-3 text-xs text-zinc-700 dark:border-zinc-800/70 dark:bg-zinc-900/20 dark:text-zinc-300">
+          <div className="mt-4 hidden rounded-2xl border border-zinc-200/70 bg-white/60 p-3 text-xs text-zinc-700 lg:block dark:border-zinc-800/70 dark:bg-zinc-900/20 dark:text-zinc-300">
             <div className="mb-2 font-semibold text-zinc-900 dark:text-zinc-100">How to make your card</div>
             <ol className="list-decimal pl-5 space-y-1">
               <li>Pick a template.</li>
@@ -828,28 +834,32 @@ export default function CardEditor() {
           </div>
 
           <div className="mt-4 space-y-4">
-            <TemplateSelector
-              templates={templateList}
-              selectedTemplateId={card.templateId}
-              onSelectTemplate={onSelectTemplate}
-            />
+            <div className={mobilePanel === 'template' ? 'block' : 'hidden lg:block'}>
+              <TemplateSelector
+                templates={templateList}
+                selectedTemplateId={card.templateId}
+                onSelectTemplate={onSelectTemplate}
+              />
+            </div>
 
-            <ControlsPanel
-              region="left"
-              card={card}
-              setCard={setCard}
-              selectedMessagePresetId={selectedMessagePresetId}
-              setSelectedMessagePresetId={setSelectedMessagePresetId}
-              onDownloadPng={onDownloadPng}
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              enableLogoDrag={enableLogoDrag}
-              setEnableLogoDrag={setEnableLogoDrag}
-              onLogoPlacementChange={handleLogoPlacementChange}
-              onLogoWidthChange={handleLogoWidthChange}
-              currentTemplateId={card.templateId}
-              showDownloadButton={false}
-            />
+            <div className={mobilePanel === 'message' ? 'block' : 'hidden lg:block'}>
+              <ControlsPanel
+                region="left"
+                card={card}
+                setCard={setCard}
+                selectedMessagePresetId={selectedMessagePresetId}
+                setSelectedMessagePresetId={setSelectedMessagePresetId}
+                onDownloadPng={onDownloadPng}
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                enableLogoDrag={enableLogoDrag}
+                setEnableLogoDrag={setEnableLogoDrag}
+                onLogoPlacementChange={handleLogoPlacementChange}
+                onLogoWidthChange={handleLogoWidthChange}
+                currentTemplateId={card.templateId}
+                showDownloadButton={false}
+              />
+            </div>
           </div>
         </aside>
 
@@ -872,11 +882,54 @@ export default function CardEditor() {
             >
               {exportLoading ? 'Downloading…' : backgroundReady ? 'Download PNG' : 'Preparing background…'}
             </button>
+            <div className="grid w-full max-w-[560px] grid-cols-3 gap-2 lg:hidden">
+              <button
+                type="button"
+                onClick={() => setMobilePanel('message')}
+                className={[
+                  'rounded-xl border px-3 py-2 text-xs font-semibold transition',
+                  mobilePanel === 'message'
+                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-50 dark:text-zinc-900'
+                    : 'border-zinc-300 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100',
+                ].join(' ')}
+              >
+                Message
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilePanel('background')}
+                className={[
+                  'rounded-xl border px-3 py-2 text-xs font-semibold transition',
+                  mobilePanel === 'background'
+                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-50 dark:text-zinc-900'
+                    : 'border-zinc-300 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100',
+                ].join(' ')}
+              >
+                Background
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilePanel('template')}
+                className={[
+                  'rounded-xl border px-3 py-2 text-xs font-semibold transition',
+                  mobilePanel === 'template'
+                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-50 dark:text-zinc-900'
+                    : 'border-zinc-300 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100',
+                ].join(' ')}
+              >
+                Template
+              </button>
+            </div>
           </div>
         </main>
 
         {/* Right controls */}
-        <aside className="order-3 w-full border-t border-zinc-200 p-4 lg:border-t-0 lg:border-l lg:border-zinc-200 dark:border-zinc-800">
+        <aside
+          className={[
+            'order-3 w-full border-t border-zinc-200 p-4 lg:border-t-0 lg:border-l lg:border-zinc-200 dark:border-zinc-800',
+            mobilePanel !== 'background' ? 'hidden lg:block' : 'block',
+          ].join(' ')}
+        >
           <ControlsPanel
             region="right"
             card={card}
