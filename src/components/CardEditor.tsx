@@ -26,6 +26,38 @@ function isNarrowScreen() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
 }
 
+function isAppleWebKitBrowser() {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const isIOS = /iPad|iPhone|iPod/.test(ua)
+  const isIpadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+  const webkitEngine = /AppleWebKit/i.test(ua)
+  const noAltEngine = !/CriOS|Chrome|FxiOS|Firefox|EdgiOS|Edge/i.test(ua)
+  return webkitEngine && (isIOS || isIpadOS || noAltEngine)
+}
+
+function logExportDebug(...args: unknown[]) {
+  if (!import.meta.env.DEV) return
+  // Helpful for diagnosing flaky mobile capture behavior on real devices.
+  console.info('[export-debug]', ...args)
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function waitAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => window.requestAnimationFrame(() => resolve()))
+}
+
+async function waitForCommittedPaint(isIOSLike: boolean): Promise<void> {
+  // iOS WebKit can decode images before they are guaranteed to be painted.
+  if (!isIOSLike) return
+  await waitAnimationFrame()
+  await waitAnimationFrame()
+  await waitMs(18)
+}
+
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -117,6 +149,11 @@ async function ensureBackgroundImgIsDataUrlForExport(
     await img.decode()
   } catch {
     /* ignore */
+  }
+
+  const appliedSrc = img.currentSrc || img.src || ''
+  if (!appliedSrc.startsWith('data:image')) {
+    throw new Error('Background data URL was not applied to preview image')
   }
 }
 
@@ -588,29 +625,56 @@ export default function CardEditor() {
     const node = cardRef.current
     if (!node) throw new Error('Preview not ready')
     if (!backgroundReady) throw new Error('Background still loading')
+    const appleWebKit = isAppleWebKitBrowser()
 
     await waitForFontsReady()
+    const captureStartedAt = performance.now()
     await ensureBackgroundImgIsDataUrlForExport(node, card.backgroundId, backgroundDataUrlCacheRef.current)
     await waitForImagesInElement(node)
+    await waitForCommittedPaint(appleWebKit)
 
     const fontEmbedCSS = await getFontEmbedCSS(node, { cacheBust: false })
 
     const narrow = isNarrowScreen()
-    const blob = await toBlob(node, {
-      // cacheBust appends ?timestamp during embed; avoid extra re-fetches / broken keys on mobile.
-      cacheBust: false,
-      // Slightly lighter on phones to reduce memory pressure during capture.
-      pixelRatio: narrow ? 1.25 : 2,
-      width: CARD_WIDTH,
-      height: CARD_HEIGHT,
-      fontEmbedCSS,
-      // Preview uses CSS scale on the 720×1080 root; strip it on the clone so PNG matches design.
-      style: {
-        transform: 'none',
-        transformOrigin: 'top left',
-      },
+    const blobFromCapture = async (pixelRatio: number): Promise<Blob> => {
+      const captured = await toBlob(node, {
+        // cacheBust appends ?timestamp during embed; avoid extra re-fetches / broken keys on mobile.
+        cacheBust: false,
+        // Slightly lighter on phones to reduce memory pressure during capture.
+        pixelRatio,
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
+        fontEmbedCSS,
+        // Preview uses CSS scale on the 720×1080 root; strip it on the clone so PNG matches design.
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+        },
+      })
+      if (!captured) throw new Error('Export produced an empty image')
+      return captured
+    }
+
+    const firstPixelRatio = narrow ? 1.25 : 2
+    let blob = await blobFromCapture(firstPixelRatio)
+    const expectedMinBytes = 35_000
+    if (appleWebKit && blob.size < expectedMinBytes) {
+      // Retry once on iOS with lower memory pressure + fresh painted frame.
+      logExportDebug('retrying-capture', {
+        backgroundId: card.backgroundId,
+        firstPixelRatio,
+        firstBlobSize: blob.size,
+      })
+      await waitForCommittedPaint(true)
+      blob = await blobFromCapture(Math.min(firstPixelRatio, 1))
+    }
+
+    logExportDebug('capture-finished', {
+      backgroundId: card.backgroundId,
+      bgSrcType: resolvedBackgroundSrc.startsWith('data:') ? 'data-url' : 'network-url',
+      blobSize: blob.size,
+      durationMs: Math.round(performance.now() - captureStartedAt),
     })
-    if (!blob) throw new Error('Export produced an empty image')
     return blob
   }
 
