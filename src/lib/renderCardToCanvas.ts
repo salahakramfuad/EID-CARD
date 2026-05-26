@@ -1,5 +1,5 @@
 import { getFontEmbedCSS, toBlob } from 'html-to-image'
-import { compositeAnimalHeroSnapshots } from './animalHeroSnapshots'
+import { compositeExportImagesOnCanvas } from './exportImageComposite'
 import { CARD_HEIGHT, CARD_WIDTH, type EidCardState } from '../templates/types'
 import {
   accentGlowGradient,
@@ -115,7 +115,10 @@ export async function renderCardToCanvas({
       if (domNode instanceof HTMLImageElement && domNode.hasAttribute('data-card-background')) {
         return false
       }
-      if (domNode instanceof HTMLImageElement && domNode.hasAttribute('data-animal-hero')) {
+      if (
+        domNode instanceof HTMLImageElement &&
+        (domNode.hasAttribute('data-animal-hero') || domNode.hasAttribute('data-school-logo'))
+      ) {
         return false
       }
       if (domNode instanceof HTMLElement && domNode.dataset.exportLayer === 'background-overlay') {
@@ -131,7 +134,7 @@ export async function renderCardToCanvas({
   if (!foregroundBlob) throw new Error('Could not render foreground layer')
   const fgImage = await blobToImage(foregroundBlob)
   ctx.drawImage(fgImage, 0, 0, CARD_WIDTH, CARD_HEIGHT)
-  await compositeAnimalHeroSnapshots(ctx, node)
+  await compositeExportImagesOnCanvas(ctx, node)
   return canvas
 }
 

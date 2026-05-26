@@ -19,7 +19,7 @@ import type {
 import { CARD_HEIGHT, CARD_WIDTH } from '../templates/types'
 import { getApiBaseUrl } from '../lib/apiBaseUrl'
 import { blobToDataUrl } from '../lib/blobToDataUrl'
-import { recordDownload } from '../lib/downloadCounter'
+import { DOWNLOAD_COUNT_BASE, fetchDownloadCount, recordDownload } from '../lib/downloadCounter'
 import { prepareImagesForExport } from '../lib/inlineImagesForExport'
 import { isIOSDevice } from '../lib/isIOSDevice'
 import DownloadCounter from './DownloadCounter'
@@ -352,7 +352,11 @@ export default function CardEditor() {
   const backgroundDataUrlCacheRef = useRef<Map<PresetBackgroundId, string>>(new Map())
   const exportImageCacheRef = useRef<Map<string, string>>(new Map())
   const downloadInFlightRef = useRef(false)
-  const [downloadCountRefreshKey, setDownloadCountRefreshKey] = useState(0)
+  const [downloadCount, setDownloadCount] = useState(DOWNLOAD_COUNT_BASE)
+
+  useEffect(() => {
+    void fetchDownloadCount().then(setDownloadCount)
+  }, [])
 
   const initialFont = fontOptions[0]
   const initialPreset = presetEidMessages[0]
@@ -680,10 +684,11 @@ export default function CardEditor() {
     try {
       await ensureBackgroundImgIsDataUrlForExport(node, card.backgroundId, backgroundDataUrlCacheRef.current)
       restorePreparedImages.push(
-        await prepareImagesForExport(node, 'img[data-animal-hero]', exportImageCacheRef.current),
-      )
-      restorePreparedImages.push(
-        await prepareImagesForExport(node, 'img[data-school-logo]', exportImageCacheRef.current),
+        await prepareImagesForExport(
+          node,
+          'img[data-animal-hero], img[data-school-logo]',
+          exportImageCacheRef.current,
+        ),
       )
       await waitForImagesInElement(node)
       await waitForCommittedPaint(iosDevice)
@@ -754,7 +759,7 @@ export default function CardEditor() {
         })
       }
       if (result.outcome === 'complete' || result.outcome === 'showManualSave') {
-        void recordDownload().then(() => setDownloadCountRefreshKey((k) => k + 1))
+        void recordDownload().then(setDownloadCount)
       }
     } catch (e) {
       console.error(e)
@@ -886,7 +891,7 @@ export default function CardEditor() {
           <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
             Customize, preview, and download as PNG.
           </div>
-          <DownloadCounter refreshKey={downloadCountRefreshKey} className="mt-2" />
+          <DownloadCounter count={downloadCount} className="mt-2" />
 
           <div className="mt-4 hidden rounded-2xl border border-zinc-200/70 bg-white/60 p-3 text-xs text-zinc-700 lg:block dark:border-zinc-800/70 dark:bg-zinc-900/20 dark:text-zinc-300">
             <div className="mb-2 font-semibold text-zinc-900 dark:text-zinc-100">How to make your card</div>
@@ -1019,7 +1024,7 @@ export default function CardEditor() {
       </div>
 
       <div className="px-4 pb-4 text-center text-[11px] text-zinc-600 dark:text-zinc-400">
-        <DownloadCounter refreshKey={downloadCountRefreshKey} className="mb-2" />
+        <DownloadCounter count={downloadCount} className="mb-2" />
         <span className="opacity-85">TM • Built by </span>
         <a
           href="https://github.com/salahakramfuad"
