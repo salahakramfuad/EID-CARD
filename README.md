@@ -14,6 +14,7 @@ Modern React (Vite) app for designing and downloading Eid-ul-Adha greeting cards
   - Decorative toggles: stars, moons, sparkles
 - **Permanent school logo** (`public/School_logo.png`) — always shown on the card; position, size, and drag on preview (no logo upload or hide)
 - Download the card as a PNG (portrait `720×1080`)
+- Public **download counter** (starts at **75**, increments on each successful PNG export)
 
 ## Setup
 
@@ -30,7 +31,12 @@ Open the URL shown by `pnpm dev`.
 
 ### Optional: AI color proxy
 
-The dev script also starts an Express server on port `3001` for `POST /api/ai-color`. Copy [`.env.example`](.env.example) to `.env` and set `OPENAI_API_KEY` only if you use that endpoint. Supports preset backgrounds and uploaded custom photos.
+The dev script also starts an Express server on port `3001`:
+
+- `GET` / `POST` `/api/downloads` — global download count (base **75** + persisted increments in `server/data/stats.json`)
+- `POST` `/api/ai-color` — optional AI palette (set `OPENAI_API_KEY` in `.env`)
+
+Vite proxies `/api/*` to `:3001` during `pnpm dev`. For production, set `VITE_AI_COLOR_PROXY_URL` to your API origin if the frontend is hosted separately.
 
 ## Build
 

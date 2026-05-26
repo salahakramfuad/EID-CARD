@@ -7,6 +7,12 @@ export default defineConfig({
   server: {
     // Lets `<img crossOrigin="anonymous">` load `/bg*.png` for canvas / html-to-image on dev.
     headers: { 'Access-Control-Allow-Origin': '*' },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
 })
 

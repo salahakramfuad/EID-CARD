@@ -431,8 +431,8 @@ export default function ControlsPanel({
                 Resize
                 <input
                   type="range"
-                  min={120}
-                  max={320}
+                  min={56}
+                  max={200}
                   step={5}
                   value={card.logo.widthPx}
                   onChange={(e) => onLogoWidthChange(Number(e.target.value))}

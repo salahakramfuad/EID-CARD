@@ -5,7 +5,7 @@ import { publicAssetUrl } from '../lib/publicAssetUrl'
 import { isLightTextColor } from '../lib/readableText'
 import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
 import { IslamicCornerFrame } from './islamicOrnaments'
-import { CardSignatureCompact } from './signature'
+import { CardSignatureBottomLeft } from './signature'
 import type { EidCardState } from './types'
 import type { IslamicCardVariant } from './islamicCardLayout'
 
@@ -83,10 +83,7 @@ export function renderCamelCard(card: EidCardState, variant: IslamicCardVariant)
         </div>
       </div>
 
-      <CardSignatureCompact
-        card={card}
-        className="pointer-events-none absolute bottom-[calc(min(34vh,280px)+20px)] left-[52px] z-20"
-      />
+      <CardSignatureBottomLeft card={card} />
 
       <div
         aria-hidden="true"

@@ -81,8 +81,12 @@ type CardSignatureCompactProps = {
   className?: string
 }
 
+/** Fixed bottom-left placement on the 720×1080 card (above safe inset). */
+export const SIGNATURE_BOTTOM_LEFT_CLASS =
+  'pointer-events-none absolute bottom-[44px] left-[48px] z-20'
+
 /**
- * Small corner signature for animal themes — sits bottom-left, not centered.
+ * Small signature for animal themes — bottom-left of the card.
  */
 export function CardSignatureCompact({ card, className = '' }: CardSignatureCompactProps) {
   const accent = card.accentColor
@@ -124,4 +128,8 @@ export function CardSignatureCompact({ card, className = '' }: CardSignatureComp
       ) : null}
     </div>
   )
+}
+
+export function CardSignatureBottomLeft({ card }: { card: EidCardState }) {
+  return <CardSignatureCompact card={card} className={SIGNATURE_BOTTOM_LEFT_CLASS} />
 }

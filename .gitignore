@@ -25,3 +25,6 @@ dist-ssr
 .env
 # Environment
 .env
+
+# Persisted download stats (increment only; base count is in server code)
+server/data/stats.json

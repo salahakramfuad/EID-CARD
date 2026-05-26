@@ -17,12 +17,15 @@ import type {
   TemplateId,
 } from '../templates/types'
 import { CARD_HEIGHT, CARD_WIDTH } from '../templates/types'
+import { getApiBaseUrl } from '../lib/apiBaseUrl'
+import { recordDownload } from '../lib/downloadCounter'
+import DownloadCounter from './DownloadCounter'
 
 const PRESET_BACKGROUNDS: PresetBackgroundId[] = ['bg1', 'bg2', 'bg3', 'bg4']
 
 const DEFAULT_TEXT_COLOR = '#ffffff'
 const DEFAULT_ACCENT_COLOR = DEFAULT_TEXT_COLOR
-const DEFAULT_LOGO_WIDTH_PX = 120
+const DEFAULT_LOGO_WIDTH_PX = 80
 const LOGO_PADDING_TOP_PX = 36
 const LOGO_PADDING_BOTTOM_PX = 40
 const LOGO_PADDING_LEFT_RIGHT_PX = 54
@@ -337,7 +340,7 @@ async function requestAiPalette(
   templateId: TemplateId,
   customBackgroundDataUrl: string | null,
 ): Promise<{ textColor: string; accentColor: string }> {
-  const baseUrl = import.meta.env.VITE_AI_COLOR_PROXY_URL ?? 'http://localhost:3001'
+  const baseUrl = getApiBaseUrl()
   const body: Record<string, string> = { backgroundId, templateId }
   if (backgroundId === 'custom' && customBackgroundDataUrl) {
     const base64 = customBackgroundDataUrl.replace(/^data:image\/\w+;base64,/, '')
@@ -370,6 +373,7 @@ export default function CardEditor() {
   const aiPaletteCacheRef = useRef<Map<string, { textColor: string; accentColor: string }>>(new Map())
   const backgroundDataUrlCacheRef = useRef<Map<PresetBackgroundId, string>>(new Map())
   const downloadInFlightRef = useRef(false)
+  const [downloadCountRefreshKey, setDownloadCountRefreshKey] = useState(0)
 
   const initialFont = fontOptions[0]
   const initialPreset = presetEidMessages[0]
@@ -755,6 +759,9 @@ export default function CardEditor() {
           showInAppHint: result.showInAppBrowserHint,
         })
       }
+      if (result.outcome === 'complete' || result.outcome === 'showManualSave') {
+        void recordDownload().then(() => setDownloadCountRefreshKey((k) => k + 1))
+      }
     } catch (e) {
       console.error(e)
       window.alert('Could not download the image. Please try again.')
@@ -885,6 +892,7 @@ export default function CardEditor() {
           <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
             Customize, preview, and download as PNG.
           </div>
+          <DownloadCounter refreshKey={downloadCountRefreshKey} className="mt-2" />
 
           <div className="mt-4 hidden rounded-2xl border border-zinc-200/70 bg-white/60 p-3 text-xs text-zinc-700 lg:block dark:border-zinc-800/70 dark:bg-zinc-900/20 dark:text-zinc-300">
             <div className="mb-2 font-semibold text-zinc-900 dark:text-zinc-100">How to make your card</div>
@@ -1017,6 +1025,7 @@ export default function CardEditor() {
       </div>
 
       <div className="px-4 pb-4 text-center text-[11px] text-zinc-600 dark:text-zinc-400">
+        <DownloadCounter refreshKey={downloadCountRefreshKey} className="mb-2" />
         <span className="opacity-85">TM • Built by </span>
         <a
           href="https://github.com/salahakramfuad"

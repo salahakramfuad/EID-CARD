@@ -18,9 +18,48 @@ const openai = !isDummyKey ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null
 
 const cache = new Map()
 
+/** Public total starts here; server stores additional increments only. */
+const DOWNLOAD_COUNT_BASE = 75
+const STATS_PATH = path.join(process.cwd(), 'server', 'data', 'stats.json')
+
+async function readDownloadIncrement() {
+  try {
+    const raw = await fs.readFile(STATS_PATH, 'utf8')
+    const data = JSON.parse(raw)
+    const n = data?.increment
+    return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0
+  } catch {
+    return 0
+  }
+}
+
+async function writeDownloadIncrement(increment) {
+  await fs.mkdir(path.dirname(STATS_PATH), { recursive: true })
+  await fs.writeFile(STATS_PATH, JSON.stringify({ increment }, null, 2), 'utf8')
+}
+
 function isHexColor(v) {
   return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)
 }
+
+app.get('/api/downloads', async (_req, res) => {
+  try {
+    const increment = await readDownloadIncrement()
+    res.json({ count: DOWNLOAD_COUNT_BASE + increment })
+  } catch {
+    res.status(500).json({ error: 'Could not read download count' })
+  }
+})
+
+app.post('/api/downloads', async (_req, res) => {
+  try {
+    const increment = (await readDownloadIncrement()) + 1
+    await writeDownloadIncrement(increment)
+    res.json({ count: DOWNLOAD_COUNT_BASE + increment })
+  } catch {
+    res.status(500).json({ error: 'Could not update download count' })
+  }
+})
 
 app.post('/api/ai-color', async (req, res) => {
   try {
@@ -122,6 +161,6 @@ Return ONLY valid JSON in this shape:
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`[ai-color-proxy] listening on :${PORT}`)
+  console.log(`[eid-card-api] listening on :${PORT}`)
 })
 

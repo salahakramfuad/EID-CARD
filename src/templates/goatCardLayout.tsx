@@ -5,7 +5,7 @@ import { GOAT_ART_FILE } from '../lib/animalAssets'
 import { publicAssetUrl } from '../lib/publicAssetUrl'
 import { CrescentIcon, SparkleIcon, StarIcon } from './icons'
 import { IslamicCornerFrame } from './islamicOrnaments'
-import { CardSignatureCompact } from './signature'
+import { CardSignatureBottomLeft } from './signature'
 import type { EidCardState } from './types'
 import type { IslamicCardVariant } from './islamicCardLayout'
 
@@ -90,10 +90,7 @@ export function renderGoatCard(card: EidCardState, variant: IslamicCardVariant):
 
       </div>
 
-      <CardSignatureCompact
-        card={card}
-        className="pointer-events-none absolute bottom-[88px] left-[48px] z-20"
-      />
+      <CardSignatureBottomLeft card={card} />
     </div>
   )
 }
