@@ -31,6 +31,12 @@ pnpm dev
 
 Open the URL shown by `pnpm dev`.
 
+`npm install` / `npm run dev` also work (see `package-lock.json`).
+
+### Optional: AI color proxy
+
+The dev script also starts an Express server on port `3001` for `POST /api/ai-color`. Copy [`.env.example`](.env.example) to `.env` and set `OPENAI_API_KEY` only if you use that endpoint.
+
 ## Build
 
 ```bash
