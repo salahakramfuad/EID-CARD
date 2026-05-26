@@ -1,5 +1,5 @@
 import { getFontEmbedCSS, toBlob } from 'html-to-image'
-import { drawAnimalHeroImagesOnCanvas } from './drawAnimalHeroOnCanvas'
+import { compositeAnimalHeroSnapshots } from './animalHeroSnapshots'
 import { CARD_HEIGHT, CARD_WIDTH, type EidCardState } from '../templates/types'
 import {
   accentGlowGradient,
@@ -131,7 +131,7 @@ export async function renderCardToCanvas({
   if (!foregroundBlob) throw new Error('Could not render foreground layer')
   const fgImage = await blobToImage(foregroundBlob)
   ctx.drawImage(fgImage, 0, 0, CARD_WIDTH, CARD_HEIGHT)
-  drawAnimalHeroImagesOnCanvas(ctx, node)
+  await compositeAnimalHeroSnapshots(ctx, node)
   return canvas
 }
 
