@@ -1,4 +1,5 @@
 import { getFontEmbedCSS, toBlob } from 'html-to-image'
+import { drawAnimalHeroImagesOnCanvas } from './drawAnimalHeroOnCanvas'
 import { CARD_HEIGHT, CARD_WIDTH, type EidCardState } from '../templates/types'
 import {
   accentGlowGradient,
@@ -12,6 +13,8 @@ type RenderCardToCanvasArgs = {
   card: EidCardState
   backgroundSrc: string
   pixelRatio: number
+  /** Preview scale applied to the card node (export maps screen boxes → 720×1080). */
+  previewDisplayScale: number
 }
 
 async function imageFromSrc(src: string): Promise<HTMLImageElement> {
@@ -90,6 +93,7 @@ export async function renderCardToCanvas({
   card,
   backgroundSrc,
   pixelRatio,
+  previewDisplayScale,
 }: RenderCardToCanvasArgs): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(CARD_WIDTH * pixelRatio)
@@ -114,6 +118,9 @@ export async function renderCardToCanvas({
       if (domNode instanceof HTMLImageElement && domNode.hasAttribute('data-card-background')) {
         return false
       }
+      if (domNode instanceof HTMLImageElement && domNode.hasAttribute('data-animal-hero')) {
+        return false
+      }
       if (domNode instanceof HTMLElement && domNode.dataset.exportLayer === 'background-overlay') {
         return false
       }
@@ -127,6 +134,7 @@ export async function renderCardToCanvas({
   if (!foregroundBlob) throw new Error('Could not render foreground layer')
   const fgImage = await blobToImage(foregroundBlob)
   ctx.drawImage(fgImage, 0, 0, CARD_WIDTH, CARD_HEIGHT)
+  drawAnimalHeroImagesOnCanvas(ctx, node, previewDisplayScale)
   return canvas
 }
 
