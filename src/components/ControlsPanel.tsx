@@ -1,8 +1,12 @@
 import type React from 'react'
+import { useRef } from 'react'
 import { fontOptions } from '../lib/fonts'
 import { presetEidMessages } from '../lib/eidMessages'
 import { publicAssetUrl } from '../lib/publicAssetUrl'
-import type { BackgroundId, EidCardState, LogoState, TemplateId } from '../templates/types'
+import type { EidCardState, LogoState, PresetBackgroundId, TemplateId } from '../templates/types'
+
+const MAX_CUSTOM_BACKGROUND_BYTES = 10 * 1024 * 1024
+const PRESET_BACKGROUNDS: PresetBackgroundId[] = ['bg1', 'bg2', 'bg3', 'bg4']
 
 type ControlsPanelProps = {
   card: EidCardState
@@ -55,6 +59,33 @@ export default function ControlsPanel({
   showDownloadButton = true,
 }: ControlsPanelProps) {
   const selectedFont = fontOptions.find((f) => f.id === card.fontId) ?? fontOptions[0]
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  const handleCustomPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      window.alert('Please choose an image file (JPG, PNG, or similar).')
+      return
+    }
+    if (file.size > MAX_CUSTOM_BACKGROUND_BYTES) {
+      window.alert('Image is too large. Please use a file under 10 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const dataUrl = reader.result
+      if (typeof dataUrl !== 'string') return
+      setCard((prev) => ({
+        ...prev,
+        backgroundId: 'custom',
+        customBackgroundDataUrl: dataUrl,
+      }))
+    }
+    reader.onerror = () => window.alert('Could not read that image. Please try another file.')
+    reader.readAsDataURL(file)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,6 +95,9 @@ export default function ControlsPanel({
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Message</h2>
           </div>
+          <p className="mb-3 text-xs text-zinc-600 dark:text-zinc-400">
+            Write your own greeting — title, message, and name appear on the card.
+          </p>
 
           <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
             Greeting title
@@ -147,6 +181,87 @@ export default function ControlsPanel({
       {/* RIGHT: Style + logo + download */}
       {region === 'right' ? (
         <>
+          <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Background</h3>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400">Presets or your photo</div>
+            </div>
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCustomPhotoChange}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="mb-3 w-full rounded-xl border border-dashed border-zinc-400/70 px-3 py-2.5 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100/40 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800/40"
+            >
+              Upload your photo
+            </button>
+
+            {card.backgroundId === 'custom' && card.customBackgroundDataUrl ? (
+              <div className="mb-3 overflow-hidden rounded-xl border border-zinc-900/70 dark:border-zinc-100/80">
+                <div
+                  className="h-20 w-full"
+                  style={{
+                    backgroundImage: `url('${card.customBackgroundDataUrl}')`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2 bg-zinc-100/50 px-2 py-1.5 dark:bg-zinc-800/50">
+                  <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Your photo</span>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-zinc-600 underline dark:text-zinc-400"
+                    onClick={() => {
+                      setCard((prev) => ({
+                        ...prev,
+                        backgroundId: 'bg1',
+                      }))
+                    }}
+                  >
+                    Use preset
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-2 gap-3">
+              {PRESET_BACKGROUNDS.map((bgId) => (
+                <button
+                  key={bgId}
+                  type="button"
+                  onClick={() => {
+                    setCard((prev) => ({ ...prev, backgroundId: bgId }))
+                  }}
+                  className={[
+                    'relative overflow-hidden rounded-xl border px-2 py-2 text-left transition',
+                    card.backgroundId === bgId
+                      ? 'border-zinc-900/70 dark:border-zinc-100/80 bg-zinc-100/40 dark:bg-zinc-800/40'
+                      : 'border-zinc-300/60 hover:bg-zinc-100/30 dark:border-zinc-700/60 dark:hover:bg-zinc-800/30',
+                  ].join(' ')}
+                >
+                  <div
+                    className="h-16 w-full rounded-lg"
+                    style={{
+                      backgroundImage: `url('${publicAssetUrl(`${bgId}.png`)}')`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                    }}
+                  />
+                  <div className="mt-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    {bgId.toUpperCase()}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Style</h3>
@@ -270,117 +385,73 @@ export default function ControlsPanel({
 
           <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Background</h3>
-              <div className="text-xs text-zinc-600 dark:text-zinc-400">bg1 - bg4</div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {(['bg1', 'bg2', 'bg3', 'bg4'] as BackgroundId[]).map((bgId) => (
-                <button
-                  key={bgId}
-                  type="button"
-                  onClick={() => {
-                    setCard((prev) => ({ ...prev, backgroundId: bgId }))
-                  }}
-                  className={[
-                    'relative overflow-hidden rounded-xl border px-2 py-2 text-left transition',
-                    card.backgroundId === bgId
-                      ? 'border-zinc-900/70 dark:border-zinc-100/80 bg-zinc-100/40 dark:bg-zinc-800/40'
-                      : 'border-zinc-300/60 hover:bg-zinc-100/30 dark:border-zinc-700/60 dark:hover:bg-zinc-800/30',
-                  ].join(' ')}
-                >
-                  <div
-                    className="h-16 w-full rounded-lg"
-                    style={{
-                      backgroundImage: `url('${publicAssetUrl(`${bgId}.png`)}')`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat',
-                    }}
-                  />
-                  <div className="mt-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    {bgId.toUpperCase()}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">
-            <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Logo</h3>
             </div>
 
             <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-              Permanent logo (no upload).
+              School logo is always shown on the card (cannot be removed).
             </div>
 
-            {card.logo ? (
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={card.logo.dataUrl}
-                    alt="Logo preview"
-                    style={{
-                      width: 54,
-                      height: Math.round(54 * card.logo.aspectRatio),
-                      objectFit: 'contain',
-                  borderRadius: 0,
-                  border: 'none',
-                  boxShadow: 'none',
-                  background: 'transparent',
-                    }}
-                  />
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={card.logo.dataUrl}
+                  alt="Logo preview"
+                  style={{
+                    width: 54,
+                    height: Math.round(54 * card.logo.aspectRatio),
+                    objectFit: 'contain',
+                    borderRadius: 0,
+                    border: 'none',
+                    boxShadow: 'none',
+                    background: 'transparent',
+                  }}
+                />
 
-                  <div className="ml-auto text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                    Always shown on card
-                  </div>
+                <div className="ml-auto text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                  Always on card
                 </div>
+              </div>
 
-                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  Position
-                  <select
-                    value={card.logo.placement}
-                onChange={(e) => onLogoPlacementChange(e.target.value as LogoState['placement'])}
-                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-50"
-                  >
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                Position
+                <select
+                  value={card.logo.placement}
+                  onChange={(e) => onLogoPlacementChange(e.target.value as LogoState['placement'])}
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-50"
+                >
                   <option value="top-left">Top-left</option>
                   <option value="top-right">Top-right</option>
                   <option value="bottom-left">Bottom-left</option>
                   <option value="bottom-right">Bottom-right</option>
-                  </select>
-                </label>
+                </select>
+              </label>
 
-                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  Resize
-                  <input
-                    type="range"
-                    min={120}
-                    max={320}
-                    step={5}
-                    value={card.logo.widthPx}
-                    onChange={(e) => onLogoWidthChange(Number(e.target.value))}
-                    className="mt-2 w-full"
-                  />
-                  <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                    {card.logo.widthPx}px
-                  </div>
-                </label>
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                Resize
+                <input
+                  type="range"
+                  min={120}
+                  max={320}
+                  step={5}
+                  value={card.logo.widthPx}
+                  onChange={(e) => onLogoWidthChange(Number(e.target.value))}
+                  className="mt-2 w-full"
+                />
+                <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                  {card.logo.widthPx}px
+                </div>
+              </label>
 
-                <label className="flex items-center justify-between gap-3 text-sm text-zinc-800 dark:text-zinc-200">
-                  <span>Drag logo on preview</span>
-                  <input
-                    type="checkbox"
-                    checked={enableLogoDrag}
-                    onChange={(e) => setEnableLogoDrag(e.target.checked)}
-                  />
-                </label>
-              </div>
-            ) : (
-              <div className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">
-                Loading default logo...
-              </div>
-            )}
+              <label className="flex items-center justify-between gap-3 text-sm text-zinc-800 dark:text-zinc-200">
+                <span>Drag logo on preview</span>
+                <input
+                  type="checkbox"
+                  checked={enableLogoDrag}
+                  onChange={(e) => setEnableLogoDrag(e.target.checked)}
+                />
+              </label>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-4 dark:border-zinc-800/70 dark:bg-zinc-900/20">

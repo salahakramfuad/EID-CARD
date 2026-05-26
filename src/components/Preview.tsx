@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type React from 'react'
 import { getTemplateById } from '../templates/registry'
 import { CARD_HEIGHT, CARD_WIDTH, type EidCardState } from '../templates/types'
@@ -38,11 +38,6 @@ export default function Preview({
   const dragOffsetRef = useRef({ x: 0, y: 0 })
 
   const template = getTemplateById(card.templateId)
-  const cardWithoutLogo: EidCardState = useMemo(() => {
-    if (!card.logo) return card
-    return { ...card, logo: null }
-  }, [card])
-
   function getRelativePointerPos(e: React.PointerEvent) {
     const el = cardRef.current
     if (!el) return { x: 0, y: 0 }
@@ -63,7 +58,6 @@ export default function Preview({
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!enableLogoDrag) return
-    if (!card.logo) return
     if (!cardRef.current) return
 
     const pos = toDesignSpace(getRelativePointerPos(e))
@@ -88,7 +82,6 @@ export default function Preview({
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!enableLogoDrag) return
-    if (!card.logo) return
     if (!dragging) return
 
     const pointerId = draggingPointerIdRef.current
@@ -136,7 +129,7 @@ export default function Preview({
         ref={cardRef}
         className={[
           'relative touch-manipulation overflow-hidden rounded-[36px]',
-          dragging && enableLogoDrag && card.logo ? 'cursor-grabbing' : 'cursor-default',
+          dragging && enableLogoDrag ? 'cursor-grabbing' : 'cursor-default',
         ].join(' ')}
         style={{
           width: CARD_WIDTH,
@@ -201,30 +194,28 @@ export default function Preview({
         />
 
         <div className="relative z-10 h-full w-full">
-          {template.render(cardWithoutLogo)}
-          {card.logo ? (
-            <img
-              src={card.logo.dataUrl}
-              alt="Logo"
-              crossOrigin={card.logo.dataUrl.startsWith('data:') ? undefined : 'anonymous'}
-              className="absolute z-50"
-              style={{
-                left: card.logo.x,
-                top: card.logo.y,
-                width: card.logo.widthPx,
-                height: Math.round(card.logo.widthPx * card.logo.aspectRatio),
-                objectFit: 'contain',
-                display: 'block',
-                borderRadius: 0,
-                boxShadow: 'none',
-                background: 'transparent',
-                border: 'none',
-                pointerEvents: 'auto',
-                touchAction: enableLogoDrag ? 'none' : 'auto',
-                userSelect: enableLogoDrag ? 'none' : 'auto',
-              }}
-            />
-          ) : null}
+          {template.render(card)}
+          <img
+            src={card.logo.dataUrl}
+            alt="School logo"
+            crossOrigin={card.logo.dataUrl.startsWith('data:') ? undefined : 'anonymous'}
+            className="absolute z-50"
+            style={{
+              left: card.logo.x,
+              top: card.logo.y,
+              width: card.logo.widthPx,
+              height: Math.round(card.logo.widthPx * card.logo.aspectRatio),
+              objectFit: 'contain',
+              display: 'block',
+              borderRadius: 0,
+              boxShadow: 'none',
+              background: 'transparent',
+              border: 'none',
+              pointerEvents: 'auto',
+              touchAction: enableLogoDrag ? 'none' : 'auto',
+              userSelect: enableLogoDrag ? 'none' : 'auto',
+            }}
+          />
 
         </div>
       </div>

@@ -19,7 +19,7 @@ export default function TemplateSelector({
         </h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {templates.map((t) => (
           <button
             key={t.id}

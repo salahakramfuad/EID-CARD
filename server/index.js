@@ -9,7 +9,7 @@ dotenv.config()
 
 const app = express()
 app.use(cors())
-app.use(express.json({ limit: '1mb' }))
+app.use(express.json({ limit: '12mb' }))
 
 const PORT = Number(process.env.PORT ?? 3001)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
@@ -24,26 +24,28 @@ function isHexColor(v) {
 
 app.post('/api/ai-color', async (req, res) => {
   try {
-    const { backgroundId, templateId } = req.body ?? {}
+    const { backgroundId, templateId, backgroundImageBase64 } = req.body ?? {}
 
-    const validBackgroundIds = new Set(['bg1', 'bg2', 'bg3', 'bg4'])
-    const validTemplateIds = new Set([
-      'modern',
-      'islamic',
-      'minimal',
-      'colorful',
-      'elegant',
-      'festive',
-      'royal',
-      'moonlight',
-    ])
+    const validPresetBackgroundIds = new Set(['bg1', 'bg2', 'bg3', 'bg4'])
+    const validTemplateIds = new Set(['cow', 'goat', 'camel'])
 
-    if (!validBackgroundIds.has(backgroundId) || !validTemplateIds.has(templateId)) {
+    const isCustom = backgroundId === 'custom'
+    if (
+      (!validPresetBackgroundIds.has(backgroundId) && !isCustom) ||
+      !validTemplateIds.has(templateId)
+    ) {
       res.status(400).json({ error: 'Invalid backgroundId or templateId' })
       return
     }
 
-    const cacheKey = `${backgroundId}:${templateId}`
+    if (isCustom && (typeof backgroundImageBase64 !== 'string' || backgroundImageBase64.length < 64)) {
+      res.status(400).json({ error: 'Missing backgroundImageBase64 for custom background' })
+      return
+    }
+
+    const cacheKey = isCustom
+      ? `custom:${backgroundImageBase64.slice(0, 96)}:${templateId}`
+      : `${backgroundId}:${templateId}`
     const cached = cache.get(cacheKey)
     if (cached) {
       res.json(cached)
@@ -55,9 +57,14 @@ app.post('/api/ai-color', async (req, res) => {
       return
     }
 
-    const imgPath = path.join(process.cwd(), 'public', `${backgroundId}.png`)
-    const buf = await fs.readFile(imgPath)
-    const base64 = buf.toString('base64')
+    let base64
+    if (isCustom) {
+      base64 = backgroundImageBase64
+    } else {
+      const imgPath = path.join(process.cwd(), 'public', `${backgroundId}.png`)
+      const buf = await fs.readFile(imgPath)
+      base64 = buf.toString('base64')
+    }
 
     const prompt = `BackgroundId=${backgroundId}, TemplateStyle=${templateId}.
 

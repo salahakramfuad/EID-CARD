@@ -8,8 +8,17 @@ import TemplateSelector from './TemplateSelector'
 import { fontOptions } from '../lib/fonts'
 import { presetEidMessages } from '../lib/eidMessages'
 import { templates } from '../templates/registry'
-import type { BackgroundId, EidCardState, LogoState, TemplateId } from '../templates/types'
+import { getIslamicVariantForTemplate } from '../templates/islamicVariants'
+import type {
+  BackgroundId,
+  EidCardState,
+  LogoState,
+  PresetBackgroundId,
+  TemplateId,
+} from '../templates/types'
 import { CARD_HEIGHT, CARD_WIDTH } from '../templates/types'
+
+const PRESET_BACKGROUNDS: PresetBackgroundId[] = ['bg1', 'bg2', 'bg3', 'bg4']
 
 const DEFAULT_TEXT_COLOR = '#ffffff'
 const DEFAULT_ACCENT_COLOR = DEFAULT_TEXT_COLOR
@@ -101,13 +110,20 @@ type DeliverPngResult =
 async function ensureBackgroundImgIsDataUrlForExport(
   root: HTMLElement,
   backgroundId: BackgroundId,
-  cache: Map<BackgroundId, string>,
+  cache: Map<PresetBackgroundId, string>,
 ): Promise<void> {
   const img = root.querySelector<HTMLImageElement>('[data-card-background]')
   if (!img) throw new Error('Preview not ready')
 
   let src = img.currentSrc || img.src || ''
   if (src.startsWith('data:image') && img.naturalWidth > 0) return
+
+  if (backgroundId === 'custom') {
+    if (!src.startsWith('data:image')) {
+      throw new Error('Custom background was not applied to preview image')
+    }
+    return
+  }
 
   let dataUrl = cache.get(backgroundId)
   if (!dataUrl) {
@@ -279,8 +295,7 @@ function getDefaultLogoPosition(
   return { x: clamp(x, 0, CARD_WIDTH - widthPx), y: clamp(y, 0, CARD_HEIGHT - heightPx) }
 }
 
-function recommendTextColorFromBackgroundId(backgroundId: BackgroundId): Promise<string> {
-  const url = publicAssetUrl(`${backgroundId}.png`)
+function recommendTextColorFromImageSrc(src: string): Promise<string> {
   return new Promise<string>((resolve) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -313,19 +328,25 @@ function recommendTextColorFromBackgroundId(backgroundId: BackgroundId): Promise
       resolve(avg > 0.55 ? '#0b0b0b' : '#ffffff')
     }
     img.onerror = () => resolve(DEFAULT_TEXT_COLOR)
-    img.src = url
+    img.src = src
   })
 }
 
 async function requestAiPalette(
   backgroundId: BackgroundId,
   templateId: TemplateId,
+  customBackgroundDataUrl: string | null,
 ): Promise<{ textColor: string; accentColor: string }> {
   const baseUrl = import.meta.env.VITE_AI_COLOR_PROXY_URL ?? 'http://localhost:3001'
+  const body: Record<string, string> = { backgroundId, templateId }
+  if (backgroundId === 'custom' && customBackgroundDataUrl) {
+    const base64 = customBackgroundDataUrl.replace(/^data:image\/\w+;base64,/, '')
+    body.backgroundImageBase64 = base64
+  }
   const res = await fetch(`${baseUrl}/api/ai-color`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ backgroundId, templateId }),
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {
@@ -347,7 +368,7 @@ export default function CardEditor() {
   const cardRef = useRef<HTMLDivElement>(null)
   const hasAskedNameRef = useRef(false)
   const aiPaletteCacheRef = useRef<Map<string, { textColor: string; accentColor: string }>>(new Map())
-  const backgroundDataUrlCacheRef = useRef<Map<BackgroundId, string>>(new Map())
+  const backgroundDataUrlCacheRef = useRef<Map<PresetBackgroundId, string>>(new Map())
   const downloadInFlightRef = useRef(false)
 
   const initialFont = fontOptions[0]
@@ -377,14 +398,15 @@ export default function CardEditor() {
     const defaultPos = getDefaultLogoPosition(defaultPlacement, DEFAULT_LOGO_WIDTH_PX, 1)
     const defaultBackgroundId: BackgroundId = 'bg1'
     const base: EidCardState = {
-      templateId: 'islamic',
+      templateId: 'cow',
+      accentColor: '#d27d2d',
       backgroundId: defaultBackgroundId,
+      customBackgroundDataUrl: null,
       title: 'Eid-ul-Adha Mubarak',
       message: initialPreset.message,
       userName: 'Your Name',
       designation: '',
       textColor: DEFAULT_TEXT_COLOR,
-      accentColor: DEFAULT_ACCENT_COLOR,
       autoTextColor: false,
       fontId: font.id,
       fontFamily: font.familyCss,
@@ -406,16 +428,41 @@ export default function CardEditor() {
 
   // Warm cache so mobile export isn’t racing a slow first paint of large PNGs.
   useEffect(() => {
-    ;(['bg1', 'bg2', 'bg3', 'bg4'] as BackgroundId[]).forEach((id) => {
+    PRESET_BACKGROUNDS.forEach((id) => {
       const im = new Image()
       im.src = publicAssetUrl(`${id}.png`)
     })
+  }, [])
+
+  // Measure school logo aspect ratio for accurate placement and export.
+  useEffect(() => {
+    const logoUrl = publicAssetUrl('School_logo.png')
+    const img = new Image()
+    img.onload = () => {
+      if (img.naturalWidth <= 0) return
+      const aspectRatio = img.naturalHeight / img.naturalWidth
+      setCard((prev) => ({
+        ...prev,
+        logo: { ...prev.logo, aspectRatio },
+      }))
+    }
+    img.src = logoUrl
   }, [])
 
   // Convert selected background into data URL so iPhone export does not depend on URL/CORS at capture time.
   useEffect(() => {
     let cancelled = false
     setBackgroundReady(false)
+
+    if (card.backgroundId === 'custom') {
+      if (card.customBackgroundDataUrl) {
+        setResolvedBackgroundSrc(card.customBackgroundDataUrl)
+      }
+      return () => {
+        cancelled = true
+      }
+    }
+
     const id = card.backgroundId
     const directUrl = publicAssetUrl(`${id}.png`)
     const cached = backgroundDataUrlCacheRef.current.get(id)
@@ -443,7 +490,7 @@ export default function CardEditor() {
     return () => {
       cancelled = true
     }
-  }, [card.backgroundId])
+  }, [card.backgroundId, card.customBackgroundDataUrl])
 
   // Hard gate: do not allow export until the chosen background source is actually decoded.
   useEffect(() => {
@@ -540,7 +587,9 @@ export default function CardEditor() {
       try {
         const cacheKey = `${card.backgroundId}:${card.templateId}`
         const cached = aiPaletteCacheRef.current.get(cacheKey)
-        const palette = cached ?? (await requestAiPalette(card.backgroundId, card.templateId))
+        const palette =
+          cached ??
+          (await requestAiPalette(card.backgroundId, card.templateId, card.customBackgroundDataUrl))
         if (!cached) {
           aiPaletteCacheRef.current.set(cacheKey, palette)
         }
@@ -550,12 +599,24 @@ export default function CardEditor() {
           return { ...prev, textColor: palette.textColor, accentColor: palette.accentColor }
         })
       } catch {
-        // Fallback to local luminance-based contrast if AI is unavailable.
-        const recommended = await recommendTextColorFromBackgroundId(card.backgroundId)
+        const fallbackSrc =
+          card.backgroundId === 'custom' && card.customBackgroundDataUrl
+            ? card.customBackgroundDataUrl
+            : card.backgroundId !== 'custom'
+              ? publicAssetUrl(`${card.backgroundId}.png`)
+              : null
+        const recommended = fallbackSrc
+          ? await recommendTextColorFromImageSrc(fallbackSrc)
+          : DEFAULT_TEXT_COLOR
         if (cancelled) return
         setCard((prev) => {
           if (!prev.autoTextColor) return prev
-          return { ...prev, textColor: recommended, accentColor: recommended }
+          const variant = getIslamicVariantForTemplate(prev.templateId)
+          return {
+            ...prev,
+            textColor: recommended,
+            accentColor: prev.accentColor === DEFAULT_ACCENT_COLOR ? variant.defaultAccent : recommended,
+          }
         })
       }
     }
@@ -563,16 +624,22 @@ export default function CardEditor() {
     return () => {
       cancelled = true
     }
-  }, [card.backgroundId, card.autoTextColor, card.templateId])
+  }, [card.backgroundId, card.autoTextColor, card.templateId, card.customBackgroundDataUrl])
 
   const onSelectTemplate = (nextTemplateId: TemplateId) => {
-    setCard((prev) => ({ ...prev, templateId: nextTemplateId }))
+    const variant = getIslamicVariantForTemplate(nextTemplateId)
+    setCard((prev) => {
+      const next: EidCardState = { ...prev, templateId: nextTemplateId }
+      if (!prev.autoTextColor && prev.accentColor === DEFAULT_ACCENT_COLOR) {
+        next.accentColor = variant.defaultAccent
+      }
+      return next
+    })
   }
 
   const handleLogoPlacementChange = (placement: LogoState['placement']) => {
     setLogoCustomPosition(false)
     setCard((prev) => {
-      if (!prev.logo) return prev
       const pos = getDefaultLogoPosition(placement, prev.logo.widthPx, prev.logo.aspectRatio)
       return {
         ...prev,
@@ -588,8 +655,6 @@ export default function CardEditor() {
 
   const handleLogoWidthChange = (widthPx: number) => {
     setCard((prev) => {
-      if (!prev.logo) return prev
-
       const pos = getDefaultLogoPosition(prev.logo.placement, widthPx, prev.logo.aspectRatio)
       const nextX = logoCustomPosition ? prev.logo.x : pos.x
       const nextY = logoCustomPosition ? prev.logo.y : pos.y
@@ -607,10 +672,8 @@ export default function CardEditor() {
   }
 
   const handleLogoPositionChange = (nextX: number, nextY: number) => {
-    if (!card.logo) return
     setLogoCustomPosition(true)
     setCard((prev) => {
-      if (!prev.logo) return prev
       return {
         ...prev,
         logo: {
@@ -675,6 +738,10 @@ export default function CardEditor() {
     if (downloadInFlightRef.current) return
     if (!backgroundReady) {
       window.alert('Background is still loading. Please wait 1-2 seconds and try again.')
+      return
+    }
+    if (card.backgroundId === 'custom' && !card.customBackgroundDataUrl) {
+      window.alert('Please upload a photo for the card background.')
       return
     }
     downloadInFlightRef.current = true

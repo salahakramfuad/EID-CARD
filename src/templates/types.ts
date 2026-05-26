@@ -4,17 +4,12 @@ import type { ReactNode } from 'react'
 export const CARD_WIDTH = 720
 export const CARD_HEIGHT = 1080
 
-export type TemplateId =
-  | 'modern'
-  | 'islamic'
-  | 'minimal'
-  | 'colorful'
-  | 'elegant'
-  | 'festive'
-  | 'royal'
-  | 'moonlight'
+export type TemplateId = 'cow' | 'goat' | 'camel'
 
-export type BackgroundId = 'bg1' | 'bg2' | 'bg3' | 'bg4'
+export type AdhaAnimalKind = TemplateId
+
+export type PresetBackgroundId = 'bg1' | 'bg2' | 'bg3' | 'bg4'
+export type BackgroundId = PresetBackgroundId | 'custom'
 
 export type TextDecorations = {
   stars: boolean
@@ -43,6 +38,8 @@ export type LogoState = {
 export type EidCardState = {
   templateId: TemplateId
   backgroundId: BackgroundId
+  /** User-uploaded full-bleed background when `backgroundId` is `custom`. */
+  customBackgroundDataUrl: string | null
 
   title: string
   message: string
@@ -66,13 +63,13 @@ export type EidCardState = {
   boldText: boolean
 
   decorations: TextDecorations
-  logo: LogoState | null
+  logo: LogoState
 }
 
 export type EidTemplate = {
   id: TemplateId
   name: string
-  styleKey: 'modern' | 'islamic' | 'minimal' | 'colorful' | 'elegant' | 'festive' | 'royal' | 'moonlight'
+  styleKey: TemplateId
   description: string
   /**
    * Used in the template picker sidebar.
