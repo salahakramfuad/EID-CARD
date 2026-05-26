@@ -196,8 +196,12 @@ export default function Preview({
         <div className="relative z-10 h-full w-full">
           {template.render(card)}
           <img
+            data-school-logo
             src={card.logo.dataUrl}
             alt="School logo"
+            loading="eager"
+            decoding="async"
+            draggable={false}
             crossOrigin={card.logo.dataUrl.startsWith('data:') ? undefined : 'anonymous'}
             className="absolute z-50"
             style={{

@@ -18,7 +18,10 @@ import type {
 } from '../templates/types'
 import { CARD_HEIGHT, CARD_WIDTH } from '../templates/types'
 import { getApiBaseUrl } from '../lib/apiBaseUrl'
+import { blobToDataUrl } from '../lib/blobToDataUrl'
 import { recordDownload } from '../lib/downloadCounter'
+import { inlineImagesForExport } from '../lib/inlineImagesForExport'
+import { isIOSDevice } from '../lib/isIOSDevice'
 import DownloadCounter from './DownloadCounter'
 
 const PRESET_BACKGROUNDS: PresetBackgroundId[] = ['bg1', 'bg2', 'bg3', 'bg4']
@@ -36,16 +39,6 @@ function clamp(n: number, min: number, max: number) {
 
 function isNarrowScreen() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
-}
-
-function isAppleWebKitBrowser() {
-  if (typeof navigator === 'undefined') return false
-  const ua = navigator.userAgent || ''
-  const isIOS = /iPad|iPhone|iPod/.test(ua)
-  const isIpadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
-  const webkitEngine = /AppleWebKit/i.test(ua)
-  const noAltEngine = !/CriOS|Chrome|FxiOS|Firefox|EdgiOS|Edge/i.test(ua)
-  return webkitEngine && (isIOS || isIpadOS || noAltEngine)
 }
 
 function logExportDebug(...args: unknown[]) {
@@ -68,21 +61,6 @@ async function waitForCommittedPaint(isIOSLike: boolean): Promise<void> {
   await waitAnimationFrame()
   await waitAnimationFrame()
   await waitMs(18)
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result)
-      } else {
-        reject(new Error('Could not read blob as data URL'))
-      }
-    }
-    reader.onerror = () => reject(new Error('Could not read blob as data URL'))
-    reader.readAsDataURL(blob)
-  })
 }
 
 /** iOS / iPadOS: `<a download>` with blob/data URLs usually does not save to Photos. */
@@ -372,6 +350,7 @@ export default function CardEditor() {
   const hasAskedNameRef = useRef(false)
   const aiPaletteCacheRef = useRef<Map<string, { textColor: string; accentColor: string }>>(new Map())
   const backgroundDataUrlCacheRef = useRef<Map<PresetBackgroundId, string>>(new Map())
+  const exportImageCacheRef = useRef<Map<string, string>>(new Map())
   const downloadInFlightRef = useRef(false)
   const [downloadCountRefreshKey, setDownloadCountRefreshKey] = useState(0)
 
@@ -693,13 +672,17 @@ export default function CardEditor() {
     const node = cardRef.current
     if (!node) throw new Error('Preview not ready')
     if (!backgroundReady) throw new Error('Background still loading')
-    const appleWebKit = isAppleWebKitBrowser()
+    const iosDevice = isIOSDevice()
 
     await waitForFontsReady()
     const captureStartedAt = performance.now()
     await ensureBackgroundImgIsDataUrlForExport(node, card.backgroundId, backgroundDataUrlCacheRef.current)
+    await inlineImagesForExport(node, 'img[data-animal-hero]', exportImageCacheRef.current, {
+      bakeFilters: true,
+    })
+    await inlineImagesForExport(node, 'img[data-school-logo]', exportImageCacheRef.current)
     await waitForImagesInElement(node)
-    await waitForCommittedPaint(appleWebKit)
+    await waitForCommittedPaint(iosDevice)
 
     const narrow = isNarrowScreen()
     const blobFromCapture = async (pixelRatio: number): Promise<Blob> => {
@@ -708,6 +691,7 @@ export default function CardEditor() {
         card,
         backgroundSrc: resolvedBackgroundSrc,
         pixelRatio,
+        previewDisplayScale: previewScale,
       })
       const captured = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
       if (!captured) throw new Error('Export produced an empty image')
@@ -717,12 +701,13 @@ export default function CardEditor() {
     const firstPixelRatio = narrow ? 1.25 : 2
     let blob = await blobFromCapture(firstPixelRatio)
     const expectedMinBytes = 35_000
-    if (appleWebKit && blob.size < expectedMinBytes) {
-      // Retry once on iOS with lower memory pressure + fresh painted frame.
+    if (iosDevice && blob.size < expectedMinBytes) {
+      // Retry once on iOS (Safari, Chrome CriOS, etc.) with lower memory pressure.
       logExportDebug('retrying-capture', {
         backgroundId: card.backgroundId,
         firstPixelRatio,
         firstBlobSize: blob.size,
+        iosDevice,
       })
       await waitForCommittedPaint(true)
       blob = await blobFromCapture(Math.min(firstPixelRatio, 1))

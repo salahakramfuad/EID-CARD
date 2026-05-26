@@ -80,7 +80,10 @@ export function renderGoatCard(card: EidCardState, variant: IslamicCardVariant):
             <img
               src={GOAT_ART_SRC}
               alt=""
+              loading="eager"
+              decoding="async"
               draggable={false}
+              crossOrigin="anonymous"
               data-animal-hero="goat"
               className="max-h-[min(38vh,360px)] w-full object-contain object-center"
               style={imgStyle}

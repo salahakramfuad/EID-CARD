@@ -92,7 +92,10 @@ export function renderCamelCard(card: EidCardState, variant: IslamicCardVariant)
         <img
           src={CAMEL_ART_SRC}
           alt=""
+          loading="eager"
+          decoding="async"
           draggable={false}
+          crossOrigin="anonymous"
           data-animal-hero="camel"
           className="h-[min(36vh,300px)] w-full max-w-[640px] object-contain object-bottom"
           style={{

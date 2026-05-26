@@ -84,7 +84,10 @@ export function renderCowCard(card: EidCardState, variant: IslamicCardVariant): 
         <img
           src={BULL_ART_SRC}
           alt=""
+          loading="eager"
+          decoding="async"
           draggable={false}
+          crossOrigin="anonymous"
           data-animal-hero="cow"
           className="h-[min(52vh,480px)] w-full max-w-[800px] object-contain object-bottom"
           style={imgStyle}
