@@ -20,7 +20,7 @@ import { CARD_HEIGHT, CARD_WIDTH } from '../templates/types'
 import { getApiBaseUrl } from '../lib/apiBaseUrl'
 import { blobToDataUrl } from '../lib/blobToDataUrl'
 import { recordDownload } from '../lib/downloadCounter'
-import { inlineImagesForExport } from '../lib/inlineImagesForExport'
+import { prepareImagesForExport } from '../lib/inlineImagesForExport'
 import { isIOSDevice } from '../lib/isIOSDevice'
 import DownloadCounter from './DownloadCounter'
 
@@ -676,50 +676,59 @@ export default function CardEditor() {
 
     await waitForFontsReady()
     const captureStartedAt = performance.now()
-    await ensureBackgroundImgIsDataUrlForExport(node, card.backgroundId, backgroundDataUrlCacheRef.current)
-    await inlineImagesForExport(node, 'img[data-animal-hero]', exportImageCacheRef.current, {
-      bakeFilters: true,
-    })
-    await inlineImagesForExport(node, 'img[data-school-logo]', exportImageCacheRef.current)
-    await waitForImagesInElement(node)
-    await waitForCommittedPaint(iosDevice)
+    const restorePreparedImages: Array<() => void> = []
+    try {
+      await ensureBackgroundImgIsDataUrlForExport(node, card.backgroundId, backgroundDataUrlCacheRef.current)
+      restorePreparedImages.push(
+        await prepareImagesForExport(node, 'img[data-animal-hero]', exportImageCacheRef.current),
+      )
+      restorePreparedImages.push(
+        await prepareImagesForExport(node, 'img[data-school-logo]', exportImageCacheRef.current),
+      )
+      await waitForImagesInElement(node)
+      await waitForCommittedPaint(iosDevice)
 
-    const narrow = isNarrowScreen()
-    const blobFromCapture = async (pixelRatio: number): Promise<Blob> => {
-      const canvas = await renderCardToCanvas({
-        node,
-        card,
-        backgroundSrc: resolvedBackgroundSrc,
-        pixelRatio,
-        previewDisplayScale: previewScale,
-      })
-      const captured = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-      if (!captured) throw new Error('Export produced an empty image')
-      return captured
-    }
+      const narrow = isNarrowScreen()
+      const blobFromCapture = async (pixelRatio: number): Promise<Blob> => {
+        const canvas = await renderCardToCanvas({
+          node,
+          card,
+          backgroundSrc: resolvedBackgroundSrc,
+          pixelRatio,
+        })
+        const captured = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, 'image/png'),
+        )
+        if (!captured) throw new Error('Export produced an empty image')
+        return captured
+      }
 
-    const firstPixelRatio = narrow ? 1.25 : 2
-    let blob = await blobFromCapture(firstPixelRatio)
-    const expectedMinBytes = 35_000
-    if (iosDevice && blob.size < expectedMinBytes) {
-      // Retry once on iOS (Safari, Chrome CriOS, etc.) with lower memory pressure.
-      logExportDebug('retrying-capture', {
+      const firstPixelRatio = narrow ? 1.25 : 2
+      let blob = await blobFromCapture(firstPixelRatio)
+      const expectedMinBytes = 35_000
+      if (iosDevice && blob.size < expectedMinBytes) {
+        logExportDebug('retrying-capture', {
+          backgroundId: card.backgroundId,
+          firstPixelRatio,
+          firstBlobSize: blob.size,
+          iosDevice,
+        })
+        await waitForCommittedPaint(true)
+        blob = await blobFromCapture(Math.min(firstPixelRatio, 1))
+      }
+
+      logExportDebug('capture-finished', {
         backgroundId: card.backgroundId,
-        firstPixelRatio,
-        firstBlobSize: blob.size,
-        iosDevice,
+        bgSrcType: resolvedBackgroundSrc.startsWith('data:') ? 'data-url' : 'network-url',
+        blobSize: blob.size,
+        durationMs: Math.round(performance.now() - captureStartedAt),
       })
-      await waitForCommittedPaint(true)
-      blob = await blobFromCapture(Math.min(firstPixelRatio, 1))
+      return blob
+    } finally {
+      for (const restore of restorePreparedImages.reverse()) {
+        restore()
+      }
     }
-
-    logExportDebug('capture-finished', {
-      backgroundId: card.backgroundId,
-      bgSrcType: resolvedBackgroundSrc.startsWith('data:') ? 'data-url' : 'network-url',
-      blobSize: blob.size,
-      durationMs: Math.round(performance.now() - captureStartedAt),
-    })
-    return blob
   }
 
   const onDownloadPng = async () => {

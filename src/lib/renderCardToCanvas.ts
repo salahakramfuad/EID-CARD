@@ -13,8 +13,6 @@ type RenderCardToCanvasArgs = {
   card: EidCardState
   backgroundSrc: string
   pixelRatio: number
-  /** Preview scale applied to the card node (export maps screen boxes → 720×1080). */
-  previewDisplayScale: number
 }
 
 async function imageFromSrc(src: string): Promise<HTMLImageElement> {
@@ -93,7 +91,6 @@ export async function renderCardToCanvas({
   card,
   backgroundSrc,
   pixelRatio,
-  previewDisplayScale,
 }: RenderCardToCanvasArgs): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(CARD_WIDTH * pixelRatio)
@@ -134,7 +131,7 @@ export async function renderCardToCanvas({
   if (!foregroundBlob) throw new Error('Could not render foreground layer')
   const fgImage = await blobToImage(foregroundBlob)
   ctx.drawImage(fgImage, 0, 0, CARD_WIDTH, CARD_HEIGHT)
-  drawAnimalHeroImagesOnCanvas(ctx, node, previewDisplayScale)
+  drawAnimalHeroImagesOnCanvas(ctx, node)
   return canvas
 }
 
